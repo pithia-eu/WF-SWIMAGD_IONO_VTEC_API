@@ -1,0 +1,6 @@
+ciso8601
+httpx
+orjson
+pandas
+fastapi
+uvicorn

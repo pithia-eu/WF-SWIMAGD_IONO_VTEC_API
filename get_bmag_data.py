@@ -9,6 +9,10 @@ from datetime import timedelta
 
 BASE_URL = 'https://electron.space.noa.gr/swif/api/v2/'
 
+def print_error_and_exit(error_message):
+    """Prints the error message in JSON format and exits."""
+    print(f'{{"error":"{error_message}"}}')
+    sys.exit(1)
 
 def getdf(client, endpoint, params=None, headers=None):
     resp = None
@@ -59,21 +63,17 @@ def request(start, end):
         )
         df = getdf(client, '/swifdb/solardb/magdata_df', params=dict(start=start, end=end))
         df = df[['timestamp', 'bmag', 'bx', 'by', 'bz']]
-        print("--------Bmag Index---------")
-        print("UTC ISO TS          Bmag    Bx      By      Bz")
+        #print("--------Bmag Index---------")
+        print("timestamp,bmag,bx,by,bz")
         for index, row in df.iterrows():
-            timestamp = row['timestamp'].strftime('%Y-%m-%dT%H:%M:%S') if pd.notnull(row['timestamp']) else 'NaN'
-            
-            # Check and round each value if it's not NaN
-            bmag = round(row['bmag'], 3) if pd.notnull(row['bmag']) else 'NaN'
-            bx = round(row['bx'], 3) if pd.notnull(row['bx']) else 'NaN'
-            by = round(row['by'], 3) if pd.notnull(row['by']) else 'NaN'
-            bz = round(row['bz'], 3) if pd.notnull(row['bz']) else 'NaN'
-
-            print(timestamp, bmag, bx, by, bz)
+            timestamp = row['timestamp'].strftime('%Y-%m-%dT%H:%M:%S') if pd.notnull(row['timestamp']) else 'nan'
+            bmag = round(row['bmag'], 3) if pd.notnull(row['bmag']) else 'nan'
+            bx = round(row['bx'], 3) if pd.notnull(row['bx']) else 'nan'
+            by = round(row['by'], 3) if pd.notnull(row['by']) else 'nan'
+            bz = round(row['bz'], 3) if pd.notnull(row['bz']) else 'nan'
+            print(f"{timestamp},{bmag},{bx},{by},{bz}")
     except Exception as e:
-        print(f'Unable to connect to API {e}')
-        raise httpx.RequestError(e.__str__())
+        print_error_and_exit(f'Unable to connect to API: {e}')
     finally:
         try:
             client.close()
@@ -85,8 +85,8 @@ def request(start, end):
 
 def main(argv):
     if len(argv) < 3:
-        print("Usage: get_bmag_data.py start_datetime end_datetime")
-        return
+        print_error_and_exit("Usage: get_bmag_data.py start_datetime end_datetime")
+        
     try:
         # Try to parse the start and end dates using the ciso8601 library
         start = ciso8601.parse_datetime(argv[1])
@@ -94,24 +94,18 @@ def main(argv):
 
         # Check if the dates are in the correct format and valid
         if not (start and end):
-            raise ValueError("The provided dates are not in the correct format or are invalid.")
+            print_error_and_exit("The provided dates are not in the correct format or are invalid.")
 
         # Check the difference between the dates
         if (end - start) >= timedelta(days=365):
-            raise ValueError("The difference between start and end dates must be less than 365 days.")
+            print_error_and_exit("The difference between start and end dates must be less than 365 days.")
 
         # Call the request function and print the results
         request(start.isoformat(), end.isoformat())
 
     except ValueError as e:
-        print(f"Error: {e}")
+        print_error_and_exit(str(e))
 
 
 if __name__ == '__main__':
-    # INPUT1: start datetime, INPUT2: end datetime
-    # Read start and end dates from the input parameters
-    # Example: python get_bmag_data.py 2021-01-01T00:00:00 2021-01-02T00:00:00
-    # start = ciso8601.parse_datetime(sys.argv[1])
-    # end = ciso8601.parse_datetime(sys.argv[2])
-    # OUTPUT: print the results: UTC ISO TS, Bmag, Bx, By, Bz
     sys.exit(main(sys.argv))

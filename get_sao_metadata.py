@@ -20,14 +20,17 @@ VALID_CHARACTERISTICS = {
     'hEa', 'foP', 'hP', 'fbEs', 'typeEs'
 }
 
+def print_error_and_exit(error_message):
+    """Prints the error message in JSON format and exits."""
+    print(f'{{"error":"{error_message}"}}')
+    sys.exit(1)
+
 def validate_arguments(stations, characteristics):
     # Check if provided stations and characteristics are valid
     if not set(stations).issubset(VALID_STATIONS):
-        print("One or more stations are invalid. Here is the list of valid stations:", *VALID_STATIONS)
-        sys.exit(1)
+        print_error_and_exit(f'One or more stations are invalid. Here is the list of valid stations: {VALID_STATIONS}')
     if not set(characteristics).issubset(VALID_CHARACTERISTICS):
-        print("One or more characteristics are invalid. Here is the list of valid characteristics:", *VALID_CHARACTERISTICS)
-        sys.exit(1)
+        print_error_and_exit(f'One or more characteristics are invalid. Here is the list of valid characteristics: {VALID_CHARACTERISTICS}')
 
 def getdf(client, endpoint, params=None, headers=None):
     resp = None
@@ -53,17 +56,14 @@ def getdf(client, endpoint, params=None, headers=None):
             else:
                 resp = orjson.loads(resp.decode('utf-8'))
     except httpx.ConnectError as e:
-        print(f'Upon request Connection Error: {e}')
+        print_error_and_exit(f'Upon request Connection Error: {e}')
         raise e
     except httpx.ConnectTimeout as e:
-        print(f'Upon request Connection Timeout: {e}')
-        raise e
+        print_error_and_exit(f'Upon request Connection Timeout: {e}')
     except httpx.ReadTimeout as e:
-        print(f'Upon request Read Timeout: {e}')
-        raise e
+        print_error_and_exit(f'Upon request Read Timeout: {e}')
     except Exception as e:
-        print(f'C Unable to complete API request {e}')
-        raise httpx.RequestError(e.__str__())
+        print_error_and_exit(f'Unable to complete API request: {e}')
 
     return resp
 
@@ -77,19 +77,27 @@ def request(params, stations, characteristics):
         )
         df = getdf(client, '/idb/saodf', params=params)
         df_grouped = df.groupby('ursi_code')
+        # Generate the zip file name
+        # Format the timestamp to the '%Y-%m-%dT%H:%M:%S' format
         for station, group in df_grouped:
-            print(f"Station: {station}, Start: {params[0][1]}, End: {params[1][1]}")
-            header_to_print = ['UTC ISO TS          Station ']
-            header_to_print.extend(char for char in characteristics)
-            print(*header_to_print)
+            # Genearate the filename
+            # Format the timestamp to the '%Y-%m-%dT%H:%M:%S' format
+            filename = f"station_csv_filename:'{station}_{params[0][1].strftime('%Y-%m-%dT%H:%M:%S')}_{params[1][1].strftime('%Y-%m-%dT%H:%M:%S')}.csv'"
+            print(filename)
+            header_to_print = ['timestamp,station']
+            header_to_print.extend(f',{char}' for char in characteristics)
+            # Combine the headers into a single string, and remove empty spaces
+            header_to_print = ''.join(header_to_print).replace(' ', '')
+            print(header_to_print)
             for index, row in group.iterrows():
-                data_to_print = [row['timestamp'].strftime('%Y-%m-%dT%H:%M:%S'), row['ursi_code']]
-                data_to_print.extend(row[char] for char in characteristics if char in row)
-                print(*data_to_print)
+                data_to_print = [row['timestamp'].strftime('%Y-%m-%dT%H:%M:%S'), ',',row['ursi_code']]
+                data_to_print.extend(f',{row[char]}' for char in characteristics if char in row)
+                # Combine the data into a single string, and remove empty spaces
+                data_to_print = ''.join(data_to_print).replace(' ', '')
+                print(data_to_print)
             print()
     except Exception as e:
-        print(f'Unable to connect to API {e}')
-        raise httpx.RequestError(e.__str__())
+        print_error_and_exit(f'Unable to connect to API: {e}')
     finally:
         try:
             client.close()
@@ -99,8 +107,7 @@ def request(params, stations, characteristics):
 
 def main(argv):
     if len(argv) < 4:
-        print("Usage: get_sao_metadata.py start_datetime end_datetime station1,station2 characteristic1,characteristic2")
-        sys.exit(1)
+        print_error_and_exit("Usage: get_sao_metadata.py start_datetime end_datetime station1,station2 characteristic1,characteristic2")
     try:
         # Try to parse the start and end dates using the ciso8601 library
         start = ciso8601.parse_datetime(argv[1])
@@ -108,11 +115,11 @@ def main(argv):
 
         # Check if the dates are in the correct format and valid
         if not (start and end):
-            raise ValueError("The provided dates are not in the correct format or are invalid.")
+            print_error_and_exit("The provided dates are not in the correct format or are invalid.")
 
         # Check the difference between the dates
         if (end - start) >= timedelta(days=365):
-            raise ValueError("The difference between start and end dates must be less than 365 days.")
+            print_error_and_exit("The difference between start and end dates must be less than 365 days.")
         
         stations = argv[3].split(',')  # Split comma-separated stations
         characteristics = argv[4].split(',')  # Split comma-separated characteristics
@@ -142,12 +149,8 @@ def main(argv):
         request(params, stations, characteristics)
 
     except ValueError as e:
-        print(f"Error: {e}")
+        print_error_and_exit(str(e))
 
 
 if __name__ == '__main__':
-    # INPUT1: start datetime, INPUT2: end datetime, INPUT3: stations, INPUT4: characteristics
-    # Read start datetime, end datetime, stations seperated by ',' and characteristics seperated by ',' from the input parameters
-    # Example: python3 get_sao_metadata.py 2023-11-06T12:00:00 2023-11-06T13:00:00 AT138,DB049 foF2,foF1
-    # OUTPUT: print the results: UTC ISO TS, Station, Characteristics
     sys.exit(main(sys.argv))

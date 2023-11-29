@@ -24,8 +24,8 @@ Before using this API, ensure you have the following prerequisites:
 
 1. Clone the repository:
      ```shell
-     git clone https://github.com/your-username/noa-workflow-api.git
-     cd noa-workflow-api
+     git clone https://github.com/pithia-eu/WF-NOA1.git
+     cd api
      ```
 
 2. Install the required dependencies:
@@ -35,8 +35,12 @@ Before using this API, ensure you have the following prerequisites:
 
 3. Run the FastAPI application:
      ```shell
-     uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+     uvicorn apis:app --host 0.0.0.0 --port 8000 --reload
      ```
+4. Open a web browser to access the API's Swagger UI documentation.
+    ```shell
+    localhost:8000/docs#
+    ```
 
 ## API Endpoints
 

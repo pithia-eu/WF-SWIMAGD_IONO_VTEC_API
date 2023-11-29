@@ -2,7 +2,7 @@
 
 ## Overview
 
-The NOA Workflow API provides a set of endpoints to interact with the NOA (National Oceanic Administration) Workflow scripts. These scripts allow you to download various data sets related to space weather and ionospheric conditions.
+The NOA Workflow API provides a set of endpoints to interact with the NOA Workflow scripts. These scripts allow you to download various data sets related to NOA.
 
 ## Features
 

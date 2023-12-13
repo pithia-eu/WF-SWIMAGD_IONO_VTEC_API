@@ -45,8 +45,8 @@ app = FastAPI(
             "description": "Download the SAO metadata for a given datetime range."
         }
     ],
-    title="NOA Workflow API",
-    description="A REST API for running the NOA Workflow scripts.",
+    title="SWIMAGD_IONO Workflow API",
+    description="A REST API for running the SWIMAGD_IONO (SOLAR WIND MAGNETOSPHERE DRIVEN IONOSPHERIC RESPONSE) Workflow scripts.",
     version="1.0.0",
 )
 
@@ -205,4 +205,4 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
         'Content-Disposition': f'attachment; filename="{zip_filename}"',
         'Content-Type': 'application/zip'
     }
-    return StreamingResponse(zip_buffer, headers=headers)
+    return StreamingResponse(zip_buffer, media_type="application/octet-stream", headers=headers)

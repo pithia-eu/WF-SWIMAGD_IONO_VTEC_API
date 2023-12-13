@@ -76,10 +76,10 @@ def validate_datetimes(start_datetime_str, end_datetime_str):
     return True
 
 # Get the status of the NOA Workflow API
-@app.get("/", summary="Get the status of the NOA Workflow API.", description="Returns the status of the NOA Workflow API.", tags=["Status"])
+@app.get("/", summary="Get the status of the SWIMAGD_IONO Workflow API.", description="Returns the status of the SWIMAGD_IONO Workflow API.", tags=["Status"])
 async def get_status():
     return {"status": "ok",
-            "message": "The NOA Workflow API is running.",
+            "message": "The SWIMAGD_IONO Workflow API is running.",
             "version": "1.0.0",
             "api_dir": script_dir,
             "workflow_dir": workflow_dir}

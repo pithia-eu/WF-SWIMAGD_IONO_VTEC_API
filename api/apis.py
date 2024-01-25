@@ -1,5 +1,6 @@
+import tempfile
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
@@ -197,14 +198,16 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
     # Prepare the ZIP file for download
     zip_buffer.seek(0)
+    # Create a temporary file to store the ZIP content
+    with tempfile.NamedTemporaryFile(delete=False) as temp_zip_file:
+        temp_zip_file.write(zip_buffer.getvalue())
     zip_filename = f"sao_metadata_{start_datetime}_{end_datetime}.zip"
 
-    # Return the ZIP content as a streaming response
     headers = {
-        'Content-Disposition': f'attachment; filename="{zip_filename}"',
-        'Content-Type': 'application/zip'
+        'Content-Disposition': f'attachment; filename="{zip_filename}"'
     }
-    return StreamingResponse(zip_buffer, media_type="application/octet-stream", headers=headers)
+    # Use FileResponse to return the ZIP file
+    return FileResponse(temp_zip_file.name, media_type="application/octet-stream", headers=headers)
 
 
 # Define the new `run_workflow` API
@@ -341,12 +344,15 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
 
         # Prepare the ZIP file for download
         zip_buffer.seek(0)
+        # Create a temporary file to store the ZIP content
+        with tempfile.NamedTemporaryFile(delete=False) as temp_zip_file:
+            temp_zip_file.write(zip_buffer.getvalue())
+            
         zip_filename = f"SWIMAGD_IONO_Workflow_{start_datetime}_{end_datetime}.zip"
 
-        # Return the ZIP content as a streaming response
         headers = {
-            'Content-Disposition': f'attachment; filename="{zip_filename}"',
-            'Content-Type': 'application/zip'
+            'Content-Disposition': f'attachment; filename="{zip_filename}"'
         }
-        return StreamingResponse(zip_buffer, media_type="application/octet-stream", headers=headers)
+        # Use FileResponse to return the ZIP file
+        return FileResponse(temp_zip_file.name, media_type="application/octet-stream", headers=headers)
     

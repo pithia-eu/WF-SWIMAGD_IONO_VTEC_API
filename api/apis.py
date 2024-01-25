@@ -216,7 +216,7 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 
 # Define the new `run_workflow` API
-@app.get("/run_workflow/", response_class=StreamingResponse, summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.", tags=["Run Workflow"])
+@app.get("/run_workflow/", response_class=StreamingResponse, summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
 async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {','.join(VALID_STATIONS)}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'zip' and 'json'.")):
     error_message = {"error":""}
     # Remove any whitespace from the stations and characteristics

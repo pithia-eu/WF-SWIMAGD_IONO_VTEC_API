@@ -227,13 +227,13 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     if not validate_datetimes(start_datetime, end_datetime):
         error_message['error']="Invalid datetime range. Ensure the start datetime is before the end datetime and the format is YYYY-MM-DDTHH:MM:SS."
         return JSONResponse(
-            status_code=400, content=error_message)
+            status_code=200, content=error_message)
     if not set(stations.split(',')).issubset(VALID_STATIONS):
         error_message['error']=f"One or more stations are invalid. Here is the list of valid stations: {','.join(VALID_STATIONS)}"
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
     if not set(characteristics.split(',')).issubset(VALID_CHARACTERISTICS):
         error_message['error']=f"One or more characteristics are invalid. Here is the list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
     
     # Workflow Step 1: Get KP data
     kp_script_path = f'{workflow_dir}/get_kp_data.sh'
@@ -252,10 +252,10 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         if process.returncode != 0:
             error_message['error'] = stderr.decode()  # Parse the JSON error message
             # Return the error message as json in the response, instead of raising an exception
-            return JSONResponse(status_code=400, content=error_message)
+            return JSONResponse(status_code=200, content=error_message)
     except subprocess.CalledProcessError as e:
         error_message['error'] = str(e)
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
     # Create CSV files in memory for kp data
     try:
         kp_filename = f"kp_{start_datetime}_{end_datetime}.csv"
@@ -263,7 +263,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         kp_file.seek(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
     # Remove the rows that timestamp is not in the requested datetime range, start_datetime <= timestamp <= end_datetime
     try:
         kp_df = pd.read_csv(kp_file, sep=',', header=0, index_col=0)
@@ -274,7 +274,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         kp_file.seek(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
     
     # Workflow Step 2: Get BMAG data
     bmag_script_path = f'{workflow_dir}/get_bmag_data.py'
@@ -286,10 +286,10 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         
         if process.returncode != 0:
             error_message['error'] = stderr.decode()  # Parse the JSON error message
-            return JSONResponse(status_code=400, content=error_message)
+            return JSONResponse(status_code=200, content=error_message)
     except subprocess.CalledProcessError as e:
         error_message['error'] = json.loads(e.stdout)
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
     # Create CSV files in memory for bmag data
     try:
         bmag_filename = f"bmag_{start_datetime}_{end_datetime}.csv"
@@ -297,7 +297,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         bmag_file.seek(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
         #raise HTTPException(status_code=400, detail=f"Error processing output: {str(e)}")
     
     # Workflow Step 3: Get SAO metadata
@@ -310,11 +310,11 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         
         if process.returncode != 0:
             error_message['error'] = stderr.decode()
-            return JSONResponse(status_code=400, content=error_message)
+            return JSONResponse(status_code=200, content=error_message)
         
     except subprocess.CalledProcessError as e:
         error_message['error'] = json.loads(e.stdout)
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
     # Create CSV files in memory for each station
     try:
         # Create CSV files in memory for each station
@@ -327,7 +327,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                 station_files[filename].write(line + '\n')
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(status_code=400, content=error_message)
+        return JSONResponse(status_code=200, content=error_message)
     
     if format == OutputFormat.json:
         # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma
@@ -375,7 +375,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                     zipf.writestr(f"sao/{filename}", file.getvalue())
         except Exception as e:
             error_message['error'] = f"Error processing output: {str(e)}"
-            return JSONResponse(status_code=400, content=error_message)
+            return JSONResponse(status_code=200, content=error_message)
 
         # Prepare the ZIP file for download
         zip_buffer.seek(0)

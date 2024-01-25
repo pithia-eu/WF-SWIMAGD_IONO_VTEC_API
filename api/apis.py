@@ -258,7 +258,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         return JSONResponse(status_code=200, content=error_message)
     # Create CSV files in memory for kp data
     try:
-        kp_filename = f"kp_{start_datetime}_{end_datetime}.csv"
+        kp_filename = f"kp_{start_datetime.replace(':','-')}_{end_datetime.replace(':','-')}.csv"
         kp_file = StringIO(stdout.decode())
         kp_file.seek(0)
     except Exception as e:
@@ -292,7 +292,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         return JSONResponse(status_code=200, content=error_message)
     # Create CSV files in memory for bmag data
     try:
-        bmag_filename = f"bmag_{start_datetime}_{end_datetime}.csv"
+        bmag_filename = f"b_{start_datetime.replace(':','-')}_{end_datetime.replace(':','-')}.csv"
         bmag_file = StringIO(stdout)
         bmag_file.seek(0)
     except Exception as e:
@@ -321,7 +321,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         station_files = {}
         for line in process.stdout.splitlines():
             if line.startswith("station_csv_filename:"):
-                filename = line.split("'")[1].split(",")[0].strip()
+                filename = line.split("'")[1].split(",")[0].replace(':','-').strip()
                 station_files[filename] = StringIO()
             elif line:
                 station_files[filename].write(line + '\n')
@@ -347,7 +347,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
             'characteristics': characteristics,
             'data':{
                 'kp_data': json.loads(kp_json),
-                'bmag_data': json.loads(bmag_json),
+                'b_data': json.loads(bmag_json),
                 'sao_metadata': sao_json
             }
         }

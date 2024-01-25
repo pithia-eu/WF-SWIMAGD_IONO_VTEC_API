@@ -31,12 +31,12 @@ app = FastAPI(
         #{"name": "Get BMAG Data","description": "Download the BMAG data for a given datetime range."},
         #{"name": "Get SAO Metadata","description": "Download the SAO metadata for a given datetime range."},
         {
-            "name": "Run SWIMAGD_IONO Workflow",
-            "description": "Run the SWIMAGD_IONO workflow and compress results in either ZIP or JSON format."
+            "name": "Run Workflow",
+            "description": "Run the SWIMAGD_IONO workflow and Download the compress results (KP data, BMAG data, and SAO metadata) in either ZIP or JSON format."
         },
     ],
     title="SWIMAGD_IONO Workflow API",
-    description="A REST API for running the SWIMAGD_IONO (SOLAR WIND MAGNETOSPHERE DRIVEN IONOSPHERIC RESPONSE) Workflow scripts.",
+    description="A REST API for running the SWIMAGD_IONO (SOLAR WIND MAGNETOSPHERE DRIVEN IONOSPHERIC RESPONSE) Workflow scripts.<br /><br />"+"This is a workflow with three Data Collections: <br />(a) ActivityIndicator: Collection of Kp, ap, and Ap indices by GFZ, with F10.7 from DRAO and Sn from WSC SILSO, <br />(b) SWIF Model, and <br />(c) European Ionosonde Network DIAS (European Digital upper Atmosphere Server) collection. <br /><br />More specifically, the SWIMAGD_IONO workflow provides: <br />(a) planetary 3-hour-range (T00:00:00, T03:00:00, ... , T21:00:00) index Kp, <br />(b) DSCOVR mission Magdata records (Bmag, Bx, By, Bz)), and <br />(c) distinct ionospheric characteristics (SAO records) for 10 European Digisonde stations (AT138, EB040, RO041, RL052, PQ052, JR055, EA036, DB049, SO148, TR170).",
     version="1.1.0",
 )
 
@@ -211,7 +211,7 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 
 # Define the new `run_workflow` API
-@app.get("/run_workflow/", response_class=StreamingResponse, summary="Run the SWIMAGD_IONO workflow and compress results in either ZIP or JSON format.", description="Run the SWIMAGD_IONO workflow to download KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.", tags=["Run SWIMAGD_IONO Workflow"])
+@app.get("/run_workflow/", response_class=StreamingResponse, summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.", tags=["Run Workflow"])
 async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {VALID_CHARACTERISTICS}"),format: str = Query('zip', regex='^(zip|json)$', description="The format of the output file. Valid values are 'zip' and 'json'.")):
     # Validate the datetime range
     if not validate_datetimes(start_datetime, end_datetime):

@@ -243,16 +243,16 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
 
         if process.returncode != 0:
             error_message = stderr.decode()  # Parse the JSON error message
-            raise HTTPException(status_code=500, detail=error_message)
+            raise HTTPException(status_code=400, detail=error_message)
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     # Create CSV files in memory for kp data
     try:
         kp_filename = f"kp_{start_datetime}_{end_datetime}.csv"
         kp_file = StringIO(stdout.decode())
         kp_file.seek(0)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error processing output: {str(e)}")
     # Remove the rows that timestamp is not in the requested datetime range, start_datetime <= timestamp <= end_datetime
     try:
         kp_df = pd.read_csv(kp_file, sep=',', header=0, index_col=0)
@@ -262,7 +262,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         kp_file = StringIO(kp_df.to_csv())
         kp_file.seek(0)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error processing output: {str(e)}")
     
     # Workflow Step 2: Get BMAG data
     bmag_script_path = f'{workflow_dir}/get_bmag_data.py'
@@ -274,17 +274,17 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         
         if process.returncode != 0:
             error_message = stderr.decode()  # Parse the JSON error message
-            raise HTTPException(status_code=500, detail=error_message)
+            raise HTTPException(status_code=400, detail=error_message)
     except subprocess.CalledProcessError as e:
         error_detail = json.loads(e.stdout)
-        raise HTTPException(status_code=500, detail=error_detail)
+        raise HTTPException(status_code=400, detail=error_detail)
     # Create CSV files in memory for bmag data
     try:
         bmag_filename = f"bmag_{start_datetime}_{end_datetime}.csv"
         bmag_file = StringIO(stdout)
         bmag_file.seek(0)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error processing output: {str(e)}")
     
     # Workflow Step 3: Get SAO metadata
     sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
@@ -296,11 +296,11 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         
         if process.returncode != 0:
             error_message = stderr.decode()  # Parse the JSON error message
-            raise HTTPException(status_code=500, detail=error_message)
+            raise HTTPException(status_code=400, detail=error_message)
         
     except subprocess.CalledProcessError as e:
         error_detail = json.loads(e.stdout)
-        raise HTTPException(status_code=500, detail=error_detail)
+        raise HTTPException(status_code=400, detail=error_detail)
     # Create CSV files in memory for each station
     try:
         # Create CSV files in memory for each station
@@ -312,7 +312,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
             elif line:
                 station_files[filename].write(line + '\n')
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error processing output: {str(e)}")
     
     if format == OutputFormat.json:
         # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma
@@ -359,7 +359,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                     file.seek(0)
                     zipf.writestr(f"sao/{filename}", file.getvalue())
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Error processing output: {str(e)}")
 
         # Prepare the ZIP file for download
         zip_buffer.seek(0)

@@ -216,7 +216,7 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 
 # Define the new `run_workflow` API
-@app.get("/run_workflow/", response_class=StreamingResponse, summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
+@app.get("/run_workflow/", response_class=StreamingResponse, responses={200: {"content": {"application/octet-stream": {}},"description": "**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n",}},summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
 async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {','.join(VALID_STATIONS)}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'zip' and 'json'.")):
     error_message = {"error":""}
     # Remove any whitespace from the stations and characteristics
@@ -226,13 +226,14 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     # Validate the inputs
     if not validate_datetimes(start_datetime, end_datetime):
         error_message['error']="Invalid datetime range. Ensure the start datetime is before the end datetime and the format is YYYY-MM-DDTHH:MM:SS."
-        return JSONResponse(error_message)
+        return JSONResponse(
+            status_code=400, content=error_message)
     if not set(stations.split(',')).issubset(VALID_STATIONS):
         error_message['error']=f"One or more stations are invalid. Here is the list of valid stations: {','.join(VALID_STATIONS)}"
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
     if not set(characteristics.split(',')).issubset(VALID_CHARACTERISTICS):
         error_message['error']=f"One or more characteristics are invalid. Here is the list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
     
     # Workflow Step 1: Get KP data
     kp_script_path = f'{workflow_dir}/get_kp_data.sh'
@@ -251,10 +252,10 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         if process.returncode != 0:
             error_message['error'] = stderr.decode()  # Parse the JSON error message
             # Return the error message as json in the response, instead of raising an exception
-            return JSONResponse(error_message)
+            return JSONResponse(status_code=400, content=error_message)
     except subprocess.CalledProcessError as e:
         error_message['error'] = str(e)
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
     # Create CSV files in memory for kp data
     try:
         kp_filename = f"kp_{start_datetime}_{end_datetime}.csv"
@@ -262,7 +263,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         kp_file.seek(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
     # Remove the rows that timestamp is not in the requested datetime range, start_datetime <= timestamp <= end_datetime
     try:
         kp_df = pd.read_csv(kp_file, sep=',', header=0, index_col=0)
@@ -273,7 +274,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         kp_file.seek(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
     
     # Workflow Step 2: Get BMAG data
     bmag_script_path = f'{workflow_dir}/get_bmag_data.py'
@@ -285,10 +286,10 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         
         if process.returncode != 0:
             error_message['error'] = stderr.decode()  # Parse the JSON error message
-            return JSONResponse(error_message)
+            return JSONResponse(status_code=400, content=error_message)
     except subprocess.CalledProcessError as e:
         error_message['error'] = json.loads(e.stdout)
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
     # Create CSV files in memory for bmag data
     try:
         bmag_filename = f"bmag_{start_datetime}_{end_datetime}.csv"
@@ -296,7 +297,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         bmag_file.seek(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
         #raise HTTPException(status_code=400, detail=f"Error processing output: {str(e)}")
     
     # Workflow Step 3: Get SAO metadata
@@ -309,11 +310,11 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         
         if process.returncode != 0:
             error_message['error'] = stderr.decode()
-            return JSONResponse(error_message)
+            return JSONResponse(status_code=400, content=error_message)
         
     except subprocess.CalledProcessError as e:
         error_message['error'] = json.loads(e.stdout)
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
     # Create CSV files in memory for each station
     try:
         # Create CSV files in memory for each station
@@ -326,7 +327,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                 station_files[filename].write(line + '\n')
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(error_message)
+        return JSONResponse(status_code=400, content=error_message)
     
     if format == OutputFormat.json:
         # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma
@@ -374,7 +375,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                     zipf.writestr(f"sao/{filename}", file.getvalue())
         except Exception as e:
             error_message['error'] = f"Error processing output: {str(e)}"
-            return JSONResponse(error_message)
+            return JSONResponse(status_code=400, content=error_message)
 
         # Prepare the ZIP file for download
         zip_buffer.seek(0)

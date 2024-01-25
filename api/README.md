@@ -4,12 +4,17 @@
 
 The NOA Workflow API provides a set of endpoints to interact with the NOA Workflow scripts. These scripts allow you to download various data sets related to NOA.
 
+## v1.1.0 Updates:
+- Includes a new "Run Workflow" API
+- All previous APIs have been deprecated and are hidden in version 1.1.0.
+
 ## Features
 
-- Get the status of the NOA Workflow API.
-- Download KP data for a given date range.
-- Download BMAG data for a given datetime range.
-- Download SAO metadata for a given datetime range.
+- Run the SWIMAGD_IONO workflow and compress results in either ZIP or JSON format.
+- Get the status of the NOA Workflow API. (Hidden)
+- Download KP data for a given date range. (Hidden)
+- Download BMAG data for a given datetime range. (Hidden)
+- Download SAO metadata for a given datetime range. (Hidden)
 
 ## Prerequisites
 
@@ -44,7 +49,15 @@ Before using this API, ensure you have the following prerequisites:
 
 ## API Endpoints
 
-### Get API Status
+### Run SWIMAGD_IONO Workflow
+- URL: /run_workflow/
+- Method: GET
+- Description: Run the SWIMAGD_IONO workflow to download KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.
+- Response:
+    - If format is 'zip': ZIP file containing KP data, BMAG data, and SAO metadata.
+    - If format is 'json': JSON file containing KP data, BMAG data, and SAO metadata.
+
+### Get API Status (Hidden)
 
 - URL: /
 - Method: GET
@@ -60,7 +73,7 @@ Before using this API, ensure you have the following prerequisites:
     }
     ```
 
-### Download KP Data
+### Download KP Data (Hidden)
 
 - URL: /download_kp_data/
 - Method: GET
@@ -70,7 +83,7 @@ Before using this API, ensure you have the following prerequisites:
     - end_date (string, required): End date in the format 'YYYY-MM-DD'.
 - Response: CSV file containing KP data for the specified date range.
 
-### Download BMAG Data
+### Download BMAG Data (Hidden)
 
 - URL: /download_bmag_data/
 - Method: GET
@@ -80,7 +93,7 @@ Before using this API, ensure you have the following prerequisites:
     - end_datetime (string, required): End datetime in the format 'YYYY-MM-DDTHH:MM:SS'.
 - Response: CSV file containing BMAG data for the specified datetime range.
 
-### Download SAO Metadata (ZIP)
+### Download SAO Metadata (ZIP) (Hidden)
 
 - URL: /download_sao_metadata_zip/
 - Method: GET

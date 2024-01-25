@@ -1,14 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import pandas as pd
 import subprocess
 import json
 import os
-import glob
-import shutil
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO, BytesIO
 
 # Define the set of valid stations and characteristics for the SAO metadata API
@@ -16,11 +15,8 @@ VALID_STATIONS = {
     'AT138', 'DB049', 'EA036', 'EB040', 'JR055', 'PQ052', 'RL052', 'RO041', 'SO148', 'TR170'
 }
 VALID_CHARACTERISTICS = {
-    'foF2', 'foF1', 'mD', 'mufD', 'fmin', 'foEs', 'fminF', 'fminE', 'foE', 'fxI', 'hF', 'hF2',
-    'hE', 'hEs', 'zmE', 'yE', 'qf', 'qe', 'downF', 'downE', 'downEs', 'ff', 'fe', 'd', 'fMUF',
-    'hfMUF', 'delta_foF2', 'foEp', 'fhF', 'fhF2', 'foF1p', 'phF2lyr', 'phF1lyr', 'zhalfNm',
-    'foF2p', 'fminEs', 'yF2', 'yF1', 'tec', 'scHgtF2pk', 'b0IRI', 'b1IRI', 'd1IRI', 'foEa',
-    'hEa', 'foP', 'hP', 'fbEs', 'typeEs'
+    'foF2','mufD', 'foEs','foE','ff','fbEs','hF2','hE', 'hEs','phF2lyr','scHgtF2pk','b0IRI',
+    #'foF1', 'mD', 'fmin',  'fminF', 'fminE',  'fxI', 'hF''zmE', 'yE', 'qf', 'qe', 'downF', 'downE', 'downEs',  'fe', 'd', 'fMUF''hfMUF', 'delta_foF2', 'foEp', 'fhF', 'fhF2', 'foF1p', 'phF1lyr', 'zhalfNm', 'foF2p', 'fminEs', 'yF2', 'yF1', 'tec', 'b1IRI', 'd1IRI', 'foEa', 'hEa', 'foP', 'hP',  'typeEs'
 }
 
 # Get the full path to the directory containing the FastAPI script
@@ -29,26 +25,18 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 workflow_dir = script_dir.replace('/api', '')
 app = FastAPI(
     openapi_tags=[
+        # {"name": "Status","description": "Get the status of the NOA Workflow API."},
+        #{"name": "Get KP Data","description": "Download the KP data for a given date range."},
+        #{"name": "Get BMAG Data","description": "Download the BMAG data for a given datetime range."},
+        #{"name": "Get SAO Metadata","description": "Download the SAO metadata for a given datetime range."},
         {
-            "name": "Status",
-            "description": "Get the status of the NOA Workflow API."
+            "name": "Run SWIMAGD_IONO Workflow",
+            "description": "Run the SWIMAGD_IONO workflow and compress results in either ZIP or JSON format."
         },
-        {
-            "name": "Get KP Data",
-            "description": "Download the KP data for a given date range."
-        },
-        {
-            "name": "Get BMAG Data",
-            "description": "Download the BMAG data for a given datetime range."
-        },
-        {
-            "name": "Get SAO Metadata",
-            "description": "Download the SAO metadata for a given datetime range."
-        }
     ],
     title="SWIMAGD_IONO Workflow API",
     description="A REST API for running the SWIMAGD_IONO (SOLAR WIND MAGNETOSPHERE DRIVEN IONOSPHERIC RESPONSE) Workflow scripts.",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 # Configure CORS for all domains
@@ -85,8 +73,9 @@ def validate_datetimes(start_datetime_str, end_datetime_str):
         return False
     return True
 
+
 # Get the status of the NOA Workflow API
-@app.get("/", summary="Get the status of the SWIMAGD_IONO Workflow API.", description="Returns the status of the SWIMAGD_IONO Workflow API.", tags=["Status"])
+@app.get("/", summary="Get the status of the SWIMAGD_IONO Workflow API.", description="Returns the status of the SWIMAGD_IONO Workflow API.", tags=["Status"], include_in_schema=False)
 async def get_status():
     return {"status": "ok",
             "message": "The SWIMAGD_IONO Workflow API is running.",
@@ -96,7 +85,7 @@ async def get_status():
 
 # Run the workflow workflow_dir/get_kp_data.sh script
 # Example: /download_kp_data/?start_date=2023-11-06&end_date=2023-11-07
-@app.get("/download_kp_data/", response_class=StreamingResponse, summary="Download the KP data for a given date range.", description="Download the KP data for a given date range.", tags=["Get KP Data"])
+@app.get("/download_kp_data/", response_class=StreamingResponse, summary="Download the KP data for a given date range.", description="Download the KP data for a given date range.", tags=["Get KP Data"], include_in_schema=False)
 async def download_kp_data(start_date: str = Query(..., description="Date in the format 'YYYY-MM-DD', e.g 2023-01-20"), end_date: str = Query(..., description="Date in the format 'YYYY-MM-DD', e.g. 2023-01-20")):
     # Validate the date range
     if not validate_dates(start_date, end_date):
@@ -130,7 +119,7 @@ async def download_kp_data(start_date: str = Query(..., description="Date in the
 
 # Run the workflow workflow_dir/get_bmag_data.py script
 # Example: /download_bmag_data/?start_datetime=2023-11-06T00:00:00&end_datetime=2023-11-07T00:00:00
-@app.get("/download_bmag_data/", response_class=StreamingResponse, summary="Download the BMAG data for a given datetime range.", description="Download the BMAG data for a given datetime range.", tags=["Get BMAG Data"])
+@app.get("/download_bmag_data/", response_class=StreamingResponse, summary="Download the BMAG data for a given datetime range.", description="Download the BMAG data for a given datetime range.", tags=["Get BMAG Data"], include_in_schema=False)
 async def download_bmag_data(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "),end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00")):
     # Validate the datetime range
     if not validate_datetimes(start_datetime, end_datetime):
@@ -164,8 +153,8 @@ async def download_bmag_data(start_datetime: str = Query(..., description="Datet
 
 # Run the workflow workflow_dir/get_sao_metadata.py script
 # Example: /download_sao_metadata_zip/?start_datetime=2023-11-06T00:00:00&end_datetime=2023-11-07T00:00:00&stations=AT138,DB049&characteristics=foF2,foF1
-@app.get("/download_sao_metadata_zip/", response_class=StreamingResponse, summary="Download the SAO metadata for a given datetime range.", description="Download the SAO metadata for a given datetime range.", tags=["Get SAO Metadata"])
-async def download_sao_metadata_zip(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "),end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foF1. Full list of valid characteristics: {VALID_CHARACTERISTICS}")):
+@app.get("/download_sao_metadata_zip/", response_class=StreamingResponse, summary="Download the SAO metadata for a given datetime range.", description="Download the SAO metadata for a given datetime range.", tags=["Get SAO Metadata"], include_in_schema=False)
+async def download_sao_metadata_zip(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "),end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {VALID_CHARACTERISTICS}")):
     # Validate the datetime range
     if not validate_datetimes(start_datetime, end_datetime):
         raise HTTPException(status_code=400, detail="Invalid datetime range. Ensure the start datetime is before the end datetime and the format is YYYY-MM-DDTHH:MM:SS.")
@@ -216,3 +205,148 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
         'Content-Type': 'application/zip'
     }
     return StreamingResponse(zip_buffer, media_type="application/octet-stream", headers=headers)
+
+
+# Define the new `run_workflow` API
+@app.get("/run_workflow/", response_class=StreamingResponse, summary="Run the SWIMAGD_IONO workflow and compress results in either ZIP or JSON format.", description="Run the SWIMAGD_IONO workflow to download KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.", tags=["Run SWIMAGD_IONO Workflow"])
+async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {VALID_CHARACTERISTICS}"),format: str = Query('zip', regex='^(zip|json)$', description="The format of the output file. Valid values are 'zip' and 'json'.")):
+    # Validate the datetime range
+    if not validate_datetimes(start_datetime, end_datetime):
+        raise HTTPException(status_code=400, detail="Invalid datetime range. Ensure the start datetime is before the end datetime and the format is YYYY-MM-DDTHH:MM:SS.")
+        # Construct the command to run the Python script
+        
+    # Workflow Step 1: Get KP data
+    kp_script_path = f'{workflow_dir}/get_kp_data.sh'
+    # Convert the start and end datetimes to dates
+    start_date = start_datetime.split('T')[0]
+    # Add one day to the end date to ensure the end date is included in the results
+    end_date = (datetime.strptime(end_datetime.split('T')[0], '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+    # Execute the shell script and capture the output
+    try:
+        process = subprocess.Popen(
+            [kp_script_path, start_date, end_date, 'print-csv'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        stdout, stderr = process.communicate()
+
+        if process.returncode != 0:
+            error_message = stderr.decode()  # Parse the JSON error message
+            raise HTTPException(status_code=500, detail=error_message)
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    # Create CSV files in memory for kp data
+    try:
+        kp_filename = f"kp_{start_date}_{end_date}.csv"
+        kp_file = StringIO(stdout.decode())
+        kp_file.seek(0)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+    
+    # Workflow Step 2: Get BMAG data
+    bmag_script_path = f'{workflow_dir}/get_bmag_data.py'
+    command = ['python3', bmag_script_path, start_datetime, end_datetime]
+    # Execute the script and capture the output
+    try:
+        process = subprocess.run(command, check=True, capture_output=True, text=True)
+        stdout, stderr = process.stdout, process.stderr
+        
+        if process.returncode != 0:
+            error_message = stderr.decode()  # Parse the JSON error message
+            raise HTTPException(status_code=500, detail=error_message)
+    except subprocess.CalledProcessError as e:
+        error_detail = json.loads(e.stdout)
+        raise HTTPException(status_code=500, detail=error_detail)
+    # Create CSV files in memory for bmag data
+    try:
+        bmag_filename = f"bmag_{start_datetime}_{end_datetime}.csv"
+        bmag_file = StringIO(stdout)
+        bmag_file.seek(0)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+    
+    # Workflow Step 3: Get SAO metadata
+    sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
+    command = ['python3', sao_script_path, start_datetime, end_datetime, stations, characteristics]
+    # Execute the script and capture the output
+    try:
+        process = subprocess.run(command, check=True, capture_output=True, text=True)
+        stdout, stderr = process.stdout, process.stderr
+        
+        if process.returncode != 0:
+            error_message = stderr.decode()  # Parse the JSON error message
+            raise HTTPException(status_code=500, detail=error_message)
+        
+    except subprocess.CalledProcessError as e:
+        error_detail = json.loads(e.stdout)
+        raise HTTPException(status_code=500, detail=error_detail)
+    # Create CSV files in memory for each station
+    try:
+        # Create CSV files in memory for each station
+        station_files = {}
+        for line in process.stdout.splitlines():
+            if line.startswith("station_csv_filename:"):
+                filename = line.split("'")[1].split(",")[0].strip()
+                station_files[filename] = StringIO()
+            elif line:
+                station_files[filename].write(line + '\n')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+    
+    if format == 'json':
+        # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma
+        kp_json = pd.read_csv(kp_file, sep=',', header=0, index_col=0).to_json(orient='index')
+        bmag_json = pd.read_csv(bmag_file, sep=',', header=0, index_col=0).to_json(orient='index')
+        sao_json = {}
+        for filename, file in station_files.items():
+            file.seek(0)
+            # Only get the station name from the filename
+            filename = filename.split('_')[0]
+            sao_json[filename] = json.loads(pd.read_csv(file, sep=',', header=0, index_col=0, usecols=lambda column: column != 'station').to_json(orient='index'))
+        # Construct the final json response
+        response_json = {
+            'start_datetime': start_datetime,
+            'end_datetime': end_datetime,
+            'stations': stations,
+            'characteristics': characteristics,
+            'data':{
+                'kp_data': json.loads(kp_json),
+                'bmag_data': json.loads(bmag_json),
+                'sao_metadata': sao_json
+            }
+        }
+        # Return the json response
+        headers = {
+            'Content-Disposition': f'attachment; filename="SWIMAGD_IONO_Workflow_{start_datetime}_{end_datetime}.json"',
+            'Content-Type': 'application/json'
+        }
+        return StreamingResponse(iter([json.dumps(response_json)]), headers=headers)
+    
+    if format == 'zip':
+        # Workflow Step 4: Create ZIP file, add files to it, and return it as a streaming response
+        # The zip file structure will be: kp_filename, bmag_filename, for each station, stroed in the sao/ directory
+        # Create a ZIP file in memory
+        try:
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # Add the KP data file
+                zipf.writestr(kp_filename, kp_file.getvalue())
+                # Add the BMAG data file
+                zipf.writestr(bmag_filename, bmag_file.getvalue())
+                # Add the SAO metadata files
+                for filename, file in station_files.items():
+                    file.seek(0)
+                    zipf.writestr(f"sao/{filename}", file.getvalue())
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+
+        # Prepare the ZIP file for download
+        zip_buffer.seek(0)
+        zip_filename = f"SWIMAGD_IONO_Workflow_{start_datetime}_{end_datetime}.zip"
+
+        # Return the ZIP content as a streaming response
+        headers = {
+            'Content-Disposition': f'attachment; filename="{zip_filename}"',
+            'Content-Type': 'application/zip'
+        }
+        return StreamingResponse(zip_buffer, media_type="application/octet-stream", headers=headers)
+    

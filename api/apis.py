@@ -10,7 +10,12 @@ import os
 import zipfile
 from datetime import datetime, timedelta
 from io import StringIO, BytesIO
+from enum import Enum
 
+class OutputFormat(str, Enum):
+    zip = "zip"
+    json = "json"
+    
 # Define the set of valid stations and characteristics for the SAO metadata API
 VALID_STATIONS = {
     'AT138', 'DB049', 'EA036', 'EB040', 'JR055', 'PQ052', 'RL052', 'RO041', 'SO148', 'TR170'
@@ -212,7 +217,11 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 # Define the new `run_workflow` API
 @app.get("/run_workflow/", response_class=StreamingResponse, summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.", tags=["Run Workflow"])
-async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {VALID_CHARACTERISTICS}"),format: str = Query('zip', regex='^(zip|json)$', description="The format of the output file. Valid values are 'zip' and 'json'.")):
+async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {','.join(VALID_STATIONS)}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'zip' and 'json'.")):
+    # Remove any whitespace from the stations and characteristics
+    stations = stations.replace(' ', '')
+    characteristics = characteristics.replace(' ', '')
+    
     # Validate the datetime range
     if not validate_datetimes(start_datetime, end_datetime):
         raise HTTPException(status_code=400, detail="Invalid datetime range. Ensure the start datetime is before the end datetime and the format is YYYY-MM-DDTHH:MM:SS.")
@@ -239,7 +248,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         raise HTTPException(status_code=500, detail=str(e))
     # Create CSV files in memory for kp data
     try:
-        kp_filename = f"kp_{start_date}_{end_date}.csv"
+        kp_filename = f"kp_{start_datetime}_{end_datetime}.csv"
         kp_file = StringIO(stdout.decode())
         kp_file.seek(0)
     except Exception as e:
@@ -247,7 +256,8 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     # Remove the rows that timestamp is not in the requested datetime range, start_datetime <= timestamp <= end_datetime
     try:
         kp_df = pd.read_csv(kp_file, sep=',', header=0, index_col=0)
-        kp_df.index = pd.to_datetime(kp_df.index)
+        # Convert the index to datetime with the format YYYY-MM-DDTHH:MM:SS
+        kp_df.index = pd.to_datetime(kp_df.index).strftime('%Y-%m-%dT%H:%M:%S')
         kp_df = kp_df.loc[start_datetime:end_datetime]
         kp_file = StringIO(kp_df.to_csv())
         kp_file.seek(0)
@@ -304,7 +314,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
     
-    if format == 'json':
+    if format == OutputFormat.json:
         # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma
         kp_json = pd.read_csv(kp_file, sep=',', header=0, index_col=0).to_json(orient='index')
         bmag_json = pd.read_csv(bmag_file, sep=',', header=0, index_col=0).to_json(orient='index')
@@ -333,7 +343,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         }
         return StreamingResponse(iter([json.dumps(response_json)]), headers=headers)
     
-    if format == 'zip':
+    if format == OutputFormat.zip:
         # Workflow Step 4: Create ZIP file, add files to it, and return it as a streaming response
         # The zip file structure will be: kp_filename, bmag_filename, for each station, stroed in the sao/ directory
         # Create a ZIP file in memory

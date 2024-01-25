@@ -13,11 +13,8 @@ VALID_STATIONS = {
     'AT138', 'DB049', 'EA036', 'EB040', 'JR055', 'PQ052', 'RL052', 'RO041', 'SO148', 'TR170'
 }
 VALID_CHARACTERISTICS = {
-    'foF2', 'foF1', 'mD', 'mufD', 'fmin', 'foEs', 'fminF', 'fminE', 'foE', 'fxI', 'hF', 'hF2',
-    'hE', 'hEs', 'zmE', 'yE', 'qf', 'qe', 'downF', 'downE', 'downEs', 'ff', 'fe', 'd', 'fMUF',
-    'hfMUF', 'delta_foF2', 'foEp', 'fhF', 'fhF2', 'foF1p', 'phF2lyr', 'phF1lyr', 'zhalfNm',
-    'foF2p', 'fminEs', 'yF2', 'yF1', 'tec', 'scHgtF2pk', 'b0IRI', 'b1IRI', 'd1IRI', 'foEa',
-    'hEa', 'foP', 'hP', 'fbEs', 'typeEs'
+    'foF2','mufD', 'foEs','foE','ff','fbEs','hF2','hE', 'hEs','phF2lyr','scHgtF2pk','b0IRI',
+    #'foF1', 'mD', 'fmin',  'fminF', 'fminE',  'fxI', 'hF''zmE', 'yE', 'qf', 'qe', 'downF', 'downE', 'downEs',  'fe', 'd', 'fMUF''hfMUF', 'delta_foF2', 'foEp', 'fhF', 'fhF2', 'foF1p', 'phF1lyr', 'zhalfNm', 'foF2p', 'fminEs', 'yF2', 'yF1', 'tec', 'b1IRI', 'd1IRI', 'foEa', 'hEa', 'foP', 'hP',  'typeEs'
 }
 
 def print_error_and_exit(error_message):

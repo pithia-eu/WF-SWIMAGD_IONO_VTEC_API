@@ -244,6 +244,15 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         kp_file.seek(0)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
+    # Remove the rows that timestamp is not in the requested datetime range, start_datetime <= timestamp <= end_datetime
+    try:
+        kp_df = pd.read_csv(kp_file, sep=',', header=0, index_col=0)
+        kp_df.index = pd.to_datetime(kp_df.index)
+        kp_df = kp_df.loc[start_datetime:end_datetime]
+        kp_file = StringIO(kp_df.to_csv())
+        kp_file.seek(0)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing output: {str(e)}")
     
     # Workflow Step 2: Get BMAG data
     bmag_script_path = f'{workflow_dir}/get_bmag_data.py'

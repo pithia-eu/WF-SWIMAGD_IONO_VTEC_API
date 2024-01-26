@@ -16,6 +16,7 @@ class OutputFormat(str, Enum):
     csv = "csv"
     zip = "zip"
     json = "json"
+    test = "test"
     
     
 # Define the set of valid stations and characteristics for the SAO metadata API
@@ -336,11 +337,12 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         error_message['error'] = f"Error processing output: {str(e)}"
         return JSONResponse(status_code=200, content=error_message)
     
-    if format == OutputFormat.csv:
+    if format == OutputFormat.csv or format == OutputFormat.test:
         # Merge all the data into 1 csv file, which is order by timmestamp, the header could be timestamp, kp, bmag, bx, by, bz, station1, characteristic1, characteristic2, station2, characteristic1, characteristic2 ... We can get the row timestamp from the first station file, and search the timestamp in the other files, if the timestamp is not in the file, we can fill the value with empty string
         csv_header = ['Kp', 'bmag', 'bx', 'by', 'bz']
         for station in stations.split(','):
-            csv_header.append(station+'_station')
+            if format == OutputFormat.csv:
+                csv_header.append(station+'_station')
             for characteristic in characteristics.split(','):
                 csv_header.append(station+'_'+characteristic)
         # Create a dataframe with the header, and set timestamp as index, timestamp is build from start_datetime to end_datetime with 5 minutes interval
@@ -379,18 +381,25 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
             station = filename.split('_')[0]
             sao_df = pd.read_csv(file, sep=',', header=0, index_col=0, usecols=lambda column: column != 'station')
             sao_df.index = pd.to_datetime(sao_df.index).strftime('%Y-%m-%dT%H:%M:%S')
-            for timestamp in sao_df.index:
-                if timestamp in df.index:
-                    df.loc[timestamp, station+'_station'] = station
+            for timestamp in df.index:
+                if timestamp in sao_df.index:
+                    if format == OutputFormat.csv:
+                        df.loc[timestamp, station+'_station'] = station
                     for characteristic in sao_df.columns:
                         # if the value is not empty, fill the value to the dataframe. or fill with 9999
                         df.loc[timestamp, station+'_'+characteristic] = sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else 9999
+                else:
+                    if format == OutputFormat.csv:
+                        df.loc[timestamp, station+'_station'] = station
+                    for characteristic in characteristics.split(','):
+                        df.loc[timestamp, station+'_'+characteristic] = 9999
             # Remove the station from the remaining_stations
             remaining_stations.remove(station)
         # Fill the remaining stations with 9999
         for station in remaining_stations:
             for timestamp in df.index:
-                df.loc[timestamp, station+'_station'] = station
+                if format == OutputFormat.csv:
+                    df.loc[timestamp, station+'_station'] = station
                 for characteristic in characteristics.split(','):
                     df.loc[timestamp, station+'_'+characteristic] = 9999
         # Fill the empty values with empty string
@@ -398,13 +407,18 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         # Convert the dataframe to csv
         csv_file = StringIO(df.to_csv())
         csv_file.seek(0)
-        if format == OutputFormat.csv:
-            # Return the output as a streaming response
-            headers = {
-                'Content-Disposition': f'attachment; filename="SWIMAGD_IONO_Workflow_{start_datetime}_{end_datetime}.csv"',
-                'Content-Type': 'text/csv'
-            }
-            return StreamingResponse(iter([csv_file.getvalue()]), headers=headers)
+        # Return the output as a FileResponse
+        filename = f"SWIMAGD_IONO_Workflow_{start_datetime}_{end_datetime}_{stations.replace(',','_')}.csv"
+        headers = {
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Content-Type': 'text/csv'
+        }
+        # save the csv file to a temporary file
+        temp_csv_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_csv_file.write(csv_file.getvalue().encode())
+        temp_csv_file.close()
+        # Use FileResponse to return the csv file
+        return FileResponse(temp_csv_file.name, media_type="text/csv", headers=headers)
     
     if format == OutputFormat.json:
         # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma

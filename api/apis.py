@@ -13,15 +13,17 @@ from io import StringIO, BytesIO
 from enum import Enum
 
 class OutputFormat(str, Enum):
+    csv = "csv"
     zip = "zip"
     json = "json"
+    
     
 # Define the set of valid stations and characteristics for the SAO metadata API
 VALID_STATIONS = {
     'AT138', 'DB049', 'EA036', 'EB040', 'JR055', 'PQ052', 'RL052', 'RO041', 'SO148', 'TR170'
 }
 VALID_CHARACTERISTICS = {
-    'foF2','mufD', 'foEs','foE','ff','fbEs','hF2','hE', 'hEs','phF2lyr','scHgtF2pk','b0IRI',
+    'b0IRI', 'fbEs', 'ff', 'foE', 'foEs', 'foF2', 'hE', 'hEs', 'hF2', 'mufD', 'phF2lyr', 'scHgtF2pk'
     #'foF1', 'mD', 'fmin',  'fminF', 'fminE',  'fxI', 'hF''zmE', 'yE', 'qf', 'qe', 'downF', 'downE', 'downEs',  'fe', 'd', 'fMUF''hfMUF', 'delta_foF2', 'foEp', 'fhF', 'fhF2', 'foF1p', 'phF1lyr', 'zhalfNm', 'foF2p', 'fminEs', 'yF2', 'yF1', 'tec', 'b1IRI', 'd1IRI', 'foEa', 'hEa', 'foP', 'hP',  'typeEs'
 }
 
@@ -37,7 +39,7 @@ app = FastAPI(
         #{"name": "Get SAO Metadata","description": "Download the SAO metadata for a given datetime range."},
         {
             "name": "Run Workflow",
-            "description": "Run the SWIMAGD_IONO workflow and Download the compress results (KP data, BMAG data, and SAO metadata) in either ZIP or JSON format."
+            "description": "Run the SWIMAGD_IONO workflow and Download the compress results (KP data, BMAG data, and SAO metadata) in either csv, ZIP or JSON format."
         },
     ],
     title="SWIMAGD_IONO Workflow API",
@@ -217,11 +219,14 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 # Define the new `run_workflow` API
 @app.get("/run_workflow/", response_class=StreamingResponse, responses={200: {"content": {"application/octet-stream": {}},"description": "**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n",}},summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
-async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {','.join(VALID_STATIONS)}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'zip' and 'json'.")):
+async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {','.join(VALID_STATIONS)}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'csv', 'zip' and 'json'.")):
     error_message = {"error":""}
     # Remove any whitespace from the stations and characteristics
     stations = stations.replace(' ', '')
     characteristics = characteristics.replace(' ', '')
+    # Sort the stations and characteristics a-z
+    stations = ','.join(sorted(stations.split(',')))
+    characteristics = ','.join(sorted(characteristics.split(',')))
     
     # Validate the inputs
     if not validate_datetimes(start_datetime, end_datetime):
@@ -328,6 +333,66 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
         return JSONResponse(status_code=200, content=error_message)
+    
+    if format == OutputFormat.csv:
+        # Merge all the data into 1 csv file, which is order by timmestamp, the header could be timestamp, kp, bmag, bx, by, bz, station1, characteristic1, characteristic2, station2, characteristic1, characteristic2 ... We can get the row timestamp from the first station file, and search the timestamp in the other files, if the timestamp is not in the file, we can fill the value with empty string
+        csv_header = ['Kp', 'bmag', 'bx', 'by', 'bz']
+        for station in stations.split(','):
+            csv_header.append(station+'_station')
+            for characteristic in characteristics.split(','):
+                csv_header.append(station+'_'+characteristic)
+        # Create a dataframe with the header, and set timestamp as index, timestamp is build from start_datetime to end_datetime with 5 minutes interval
+        start_datetime = datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S')
+        end_datetime = datetime.strptime(end_datetime, '%Y-%m-%dT%H:%M:%S')
+        index = pd.date_range(start_datetime, end_datetime, freq='5min')
+        index = index.strftime('%Y-%m-%dT%H:%M:%S')
+        df = pd.DataFrame(columns=csv_header, index=index)
+        # Give the index a name
+        df.index.name = 'timestamp'
+        # Fill the dataframe with data
+        # Fill the KP data
+        kp_df = pd.read_csv(kp_file, sep=',', header=0, index_col=0)
+        kp_df.index = pd.to_datetime(kp_df.index).strftime('%Y-%m-%dT%H:%M:%S')
+        # Fill the KP data if have the timestamp in the dataframe, or fill the empty string
+        # The KP data is 3-hour-range (T00:00:00, T03:00:00, ... , T21:00:00), so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
+        for timestamp in kp_df.index:
+            if timestamp in df.index:
+                df.loc[timestamp, 'Kp'] = kp_df.loc[timestamp, 'Kp']
+        
+        # Fill the BMAG data
+        bmag_df = pd.read_csv(bmag_file, sep=',', header=0, index_col=0)
+        bmag_df.index = pd.to_datetime(bmag_df.index).strftime('%Y-%m-%dT%H:%M:%S')
+        # The bmag data is 1-hour-range (T00:00:00, T01:00:00, ... , T23:00:00), so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
+        for timestamp in bmag_df.index:
+            if timestamp in df.index:
+                df.loc[timestamp, 'bmag'] = bmag_df.loc[timestamp, 'bmag']
+                df.loc[timestamp, 'bx'] = bmag_df.loc[timestamp, 'bx']
+                df.loc[timestamp, 'by'] = bmag_df.loc[timestamp, 'by']
+                df.loc[timestamp, 'bz'] = bmag_df.loc[timestamp, 'bz']
+        # Fill the SAO metadata
+        for filename, file in station_files.items():
+            file.seek(0)
+            # Only get the station name from the filename
+            station = filename.split('_')[0]
+            sao_df = pd.read_csv(file, sep=',', header=0, index_col=0, usecols=lambda column: column != 'station')
+            sao_df.index = pd.to_datetime(sao_df.index).strftime('%Y-%m-%dT%H:%M:%S')
+            for timestamp in sao_df.index:
+                if timestamp in df.index:
+                    df.loc[timestamp, station+'_station'] = station
+                    for characteristic in sao_df.columns:
+                        df.loc[timestamp, station+'_'+characteristic] = sao_df.loc[timestamp, characteristic]
+        # Fill the empty values with empty string
+        df.fillna('', inplace=True)
+        # Convert the dataframe to csv
+        csv_file = StringIO(df.to_csv())
+        csv_file.seek(0)
+        if format == OutputFormat.csv:
+            # Return the output as a streaming response
+            headers = {
+                'Content-Disposition': f'attachment; filename="SWIMAGD_IONO_Workflow_{start_datetime}_{end_datetime}.csv"',
+                'Content-Type': 'text/csv'
+            }
+            return StreamingResponse(iter([csv_file.getvalue()]), headers=headers)
     
     if format == OutputFormat.json:
         # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma

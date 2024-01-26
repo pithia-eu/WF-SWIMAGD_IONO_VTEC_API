@@ -22,10 +22,12 @@ class OutputFormat(str, Enum):
 VALID_STATIONS = {
     'AT138', 'DB049', 'EA036', 'EB040', 'JR055', 'PQ052', 'RL052', 'RO041', 'SO148', 'TR170'
 }
+SORTED_VALID_STATIONS = ','.join(sorted(VALID_STATIONS))
 VALID_CHARACTERISTICS = {
     'b0IRI', 'fbEs', 'ff', 'foE', 'foEs', 'foF2', 'hE', 'hEs', 'hF2', 'mufD', 'phF2lyr', 'scHgtF2pk'
     #'foF1', 'mD', 'fmin',  'fminF', 'fminE',  'fxI', 'hF''zmE', 'yE', 'qf', 'qe', 'downF', 'downE', 'downEs',  'fe', 'd', 'fMUF''hfMUF', 'delta_foF2', 'foEp', 'fhF', 'fhF2', 'foF1p', 'phF1lyr', 'zhalfNm', 'foF2p', 'fminEs', 'yF2', 'yF1', 'tec', 'b1IRI', 'd1IRI', 'foEa', 'hEa', 'foP', 'hP',  'typeEs'
 }
+SORTED_VALID_CHARACTERISTICS = ','.join(sorted(VALID_CHARACTERISTICS))
 
 # Get the full path to the directory containing the FastAPI script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -219,7 +221,7 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 # Define the new `run_workflow` API
 @app.get("/run_workflow/", response_class=StreamingResponse, responses={200: {"content": {"application/octet-stream": {}},"description": "**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n",}},summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
-async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {','.join(VALID_STATIONS)}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'csv', 'zip' and 'json'.")):
+async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {SORTED_VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {SORTED_VALID_CHARACTERISTICS}"),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'csv', 'zip' and 'json'.")):
     error_message = {"error":""}
     # Remove any whitespace from the stations and characteristics
     stations = stations.replace(' ', '')

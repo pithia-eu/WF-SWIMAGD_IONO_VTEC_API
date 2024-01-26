@@ -371,6 +371,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                 df.loc[timestamp, 'bx'] = bmag_df.loc[timestamp, 'bx']
                 df.loc[timestamp, 'by'] = bmag_df.loc[timestamp, 'by']
                 df.loc[timestamp, 'bz'] = bmag_df.loc[timestamp, 'bz']
+        remaining_stations = stations.split(',')
         # Fill the SAO metadata
         for filename, file in station_files.items():
             file.seek(0)
@@ -382,7 +383,16 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                 if timestamp in df.index:
                     df.loc[timestamp, station+'_station'] = station
                     for characteristic in sao_df.columns:
-                        df.loc[timestamp, station+'_'+characteristic] = sao_df.loc[timestamp, characteristic]
+                        # if the value is not empty, fill the value to the dataframe. or fill with 9999
+                        df.loc[timestamp, station+'_'+characteristic] = sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else 9999
+            # Remove the station from the remaining_stations
+            remaining_stations.remove(station)
+        # Fill the remaining stations with 9999
+        for station in remaining_stations:
+            for timestamp in df.index:
+                df.loc[timestamp, station+'_station'] = station
+                for characteristic in characteristics.split(','):
+                    df.loc[timestamp, station+'_'+characteristic] = 9999
         # Fill the empty values with empty string
         df.fillna('', inplace=True)
         # Convert the dataframe to csv

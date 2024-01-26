@@ -16,7 +16,6 @@ class OutputFormat(str, Enum):
     csv = "csv"
     zip = "zip"
     json = "json"
-    test = "test"
     
     
 # Define the set of valid stations and characteristics for the SAO metadata API
@@ -337,14 +336,14 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         error_message['error'] = f"Error processing output: {str(e)}"
         return JSONResponse(status_code=200, content=error_message)
     
-    if format == OutputFormat.csv or format == OutputFormat.test:
+    if format == OutputFormat.csv:
         # Merge all the data into 1 csv file, which is order by timmestamp, the header could be timestamp, kp, bmag, bx, by, bz, station1, characteristic1, characteristic2, station2, characteristic1, characteristic2 ... We can get the row timestamp from the first station file, and search the timestamp in the other files, if the timestamp is not in the file, we can fill the value with empty string
-        null_value = '9999'
-        if format == OutputFormat.test:
-            null_value = ''
+        null_value = ''
+        if format != OutputFormat.csv:
+            null_value = '9999'
         csv_header = ['Kp', 'bmag', 'bx', 'by', 'bz']
         for station in stations.split(','):
-            if format == OutputFormat.csv:
+            if format != OutputFormat.csv:
                 csv_header.append(station+'_station')
             for characteristic in characteristics.split(','):
                 csv_header.append(station+'_'+characteristic)
@@ -386,13 +385,13 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
             sao_df.index = pd.to_datetime(sao_df.index).strftime('%Y-%m-%dT%H:%M:%S')
             for timestamp in df.index:
                 if timestamp in sao_df.index:
-                    if format == OutputFormat.csv:
+                    if format != OutputFormat.csv:
                         df.loc[timestamp, station+'_station'] = station
                     for characteristic in sao_df.columns:
                         # if the value is not empty, fill the value to the dataframe. or fill with 9999
                         df.loc[timestamp, station+'_'+characteristic] = sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else null_value
                 else:
-                    if format == OutputFormat.csv:
+                    if format != OutputFormat.csv:
                         df.loc[timestamp, station+'_station'] = station
                     for characteristic in characteristics.split(','):
                         df.loc[timestamp, station+'_'+characteristic] = null_value
@@ -401,7 +400,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         # Fill the remaining stations with 9999
         for station in remaining_stations:
             for timestamp in df.index:
-                if format == OutputFormat.csv:
+                if format != OutputFormat.csv:
                     df.loc[timestamp, station+'_station'] = station
                 for characteristic in characteristics.split(','):
                     df.loc[timestamp, station+'_'+characteristic] = null_value

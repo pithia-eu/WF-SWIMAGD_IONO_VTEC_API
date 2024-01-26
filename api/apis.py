@@ -339,6 +339,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     
     if format == OutputFormat.csv or format == OutputFormat.test:
         # Merge all the data into 1 csv file, which is order by timmestamp, the header could be timestamp, kp, bmag, bx, by, bz, station1, characteristic1, characteristic2, station2, characteristic1, characteristic2 ... We can get the row timestamp from the first station file, and search the timestamp in the other files, if the timestamp is not in the file, we can fill the value with empty string
+        null_value = '9999'
         csv_header = ['Kp', 'bmag', 'bx', 'by', 'bz']
         for station in stations.split(','):
             if format == OutputFormat.csv:
@@ -387,12 +388,12 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                         df.loc[timestamp, station+'_station'] = station
                     for characteristic in sao_df.columns:
                         # if the value is not empty, fill the value to the dataframe. or fill with 9999
-                        df.loc[timestamp, station+'_'+characteristic] = sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else 9999
+                        df.loc[timestamp, station+'_'+characteristic] = sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else null_value
                 else:
                     if format == OutputFormat.csv:
                         df.loc[timestamp, station+'_station'] = station
                     for characteristic in characteristics.split(','):
-                        df.loc[timestamp, station+'_'+characteristic] = 9999
+                        df.loc[timestamp, station+'_'+characteristic] = null_value
             # Remove the station from the remaining_stations
             remaining_stations.remove(station)
         # Fill the remaining stations with 9999
@@ -401,7 +402,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                 if format == OutputFormat.csv:
                     df.loc[timestamp, station+'_station'] = station
                 for characteristic in characteristics.split(','):
-                    df.loc[timestamp, station+'_'+characteristic] = 9999
+                    df.loc[timestamp, station+'_'+characteristic] = null_value
         # Fill the empty values with empty string
         df.fillna('', inplace=True)
         # Convert the dataframe to csv

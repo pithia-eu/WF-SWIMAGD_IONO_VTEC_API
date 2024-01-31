@@ -32,7 +32,22 @@ class Stations(str, Enum):
     RO041 = "RO041"
     SO148 = "SO148"
     TR170 = "TR170"
-    
+
+# Define the colors for each characteristic
+CHAR_COLORS = {
+    'b0IRI': 'red',
+    'fbEs': 'blue',
+    'ff': 'green',
+    'foE': 'orange',
+    'foEs': 'purple',
+    'foF2': 'brown',
+    'hE': 'pink',
+    'hEs': 'gray',
+    'hF2': 'olive',
+    'mufD': 'cyan',
+    'phF2lyr': 'magenta',
+    'scHgtF2pk': 'yellow'
+}
 # Define the set of valid stations and characteristics for the SAO metadata API
 VALID_STATIONS = {
     'AT138', 'DB049', 'EA036', 'EB040', 'JR055', 'PQ052', 'RL052', 'RO041', 'SO148', 'TR170'
@@ -515,7 +530,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
 
 # Define the 'plot_data' API
 @app.get("/plot_data/", response_class=StreamingResponse, summary="Plot the KP data, B data, and SAO metadata for selected station.", description="Plot the KP data, BMAG data, and SAO metadata.", tags=["Plot Data"])
-async def plot_data(date_of_interest: str = Query(..., description="Date in the format 'YYYY-MM-DD', e.g. 2023-01-01"), station: Stations = Query(..., description=f"Select a station"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,ff,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk, where phF2ly=hmF2.")):
+async def plot_data(date_of_interest: str = Query(..., description="Date in the format 'YYYY-MM-DD', e.g. 2023-01-01"), station: Stations = Query(..., description=f"Select a station"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk, where phF2ly=hmF2.")):
     error_message = {"error":""}
     # Remove any whitespace from the characteristics
     characteristics = characteristics.replace(' ', '')
@@ -697,11 +712,11 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
                         height_y_axis[characteristic].append(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-    ax_freq.set_ylabel(f'[MHz]')
+    ax_freq.set_ylabel(f'Frequencies [MHz]')
     ax_freq.set_title(f'{selected_station} - Ionospheric characteristics - frequencies: {",".join(freq_y_characteristics)} [MHz]')
     # Hide the x-axis tick labels
     plt.setp(ax_freq.get_xticklabels(), visible=False)
-    ax_height.set_ylabel(f'[km]')
+    ax_height.set_ylabel(f'Heights [km]')
     ax_height.set_title(f'{selected_station} - Ionospheric characteristics - heights: {",".join(height_y_characteristics)} [km]')
     # Show the x-axis tick lables, and reformat the timestamp to show as 1 Jan 2024 00:00:00
     ax_height.xaxis.set_major_formatter(mdates.DateFormatter('%d %b %Y %H:%M:%S'))
@@ -709,14 +724,14 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         if len(freq_y_characteristics) > 0:
         # Plot the frequency characteristics
             for characteristic in freq_y_characteristics:
-                ax_freq.plot(x_axis, freq_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2)
+                ax_freq.plot(x_axis, freq_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
             ax_freq.legend(ncol=len(freq_y_characteristics))
         else:
             ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
         if len(height_y_characteristics) > 0:
             # Plot the height characteristics
             for characteristic in height_y_characteristics:
-                ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2)
+                ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
             ax_height.legend(ncol=len(height_y_characteristics))
         else:
             ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)

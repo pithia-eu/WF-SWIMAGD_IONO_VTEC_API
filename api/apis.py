@@ -697,12 +697,12 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
                         height_y_axis[characteristic].append(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
-    ax_freq.set_ylabel(f'{",".join(freq_y_characteristics)} [MHz]')
-    ax_freq.set_title(f'{selected_station} - Ionospheric characteristics - frequencies')
+    ax_freq.set_ylabel(f'[MHz]')
+    ax_freq.set_title(f'{selected_station} - Ionospheric characteristics - frequencies: {",".join(freq_y_characteristics)} [MHz]')
     # Hide the x-axis tick labels
     plt.setp(ax_freq.get_xticklabels(), visible=False)
-    ax_height.set_ylabel(f'{",".join(height_y_characteristics)} [km]')
-    ax_height.set_title(f'{selected_station} - Ionospheric characteristics - heights')
+    ax_height.set_ylabel(f'[km]')
+    ax_height.set_title(f'{selected_station} - Ionospheric characteristics - heights: {",".join(height_y_characteristics)} [km]')
     # Show the x-axis tick lables, and reformat the timestamp to show as 1 Jan 2024 00:00:00
     ax_height.xaxis.set_major_formatter(mdates.DateFormatter('%d %b %Y %H:%M:%S'))
     if sao_df.empty==False:
@@ -710,8 +710,6 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         # Plot the frequency characteristics
             for characteristic in freq_y_characteristics:
                 ax_freq.plot(x_axis, freq_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2)
-            # Set range for y-axis from 0 to 12
-            ax_freq.set_ylim(0, 12)
             ax_freq.legend(ncol=len(freq_y_characteristics))
         else:
             ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
@@ -719,8 +717,6 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             # Plot the height characteristics
             for characteristic in height_y_characteristics:
                 ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2)
-            # Set range for y-axis from 0 to 400
-            ax_height.set_ylim(0, 400)
             ax_height.legend(ncol=len(height_y_characteristics))
         else:
             ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)

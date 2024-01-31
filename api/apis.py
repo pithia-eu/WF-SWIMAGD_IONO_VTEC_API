@@ -650,7 +650,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     # Set the bmag y-axis range from min to max of all bmag_y_axis, bx_y_axis, by_y_axis, bz_y_axis offset by 1
     ax_b.set_ylim(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)-2, max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)+2)
     # Plot the 0 line for y-axis, grey color, linewidth 0.5
-    ax_b.axhline(y=0, color='grey', linewidth=0.5)
+    ax_b.axhline(y=0, color='grey', linewidth=0.5, linestyle='--')
     ax_b.set_ylabel('Bmag, Bx, By, Bz [nT]')
     ax_b.set_title(f'DSCOVR mission Magdata records')
     # Add the legend
@@ -725,14 +725,20 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         # Plot the frequency characteristics
             for characteristic in freq_y_characteristics:
                 ax_freq.plot(x_axis, freq_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
-            ax_freq.legend(ncol=len(freq_y_characteristics))
+            # Place the legend at the Top Right corner
+            ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right')
+            # Leave some space at the top of the plot
+            ax_freq.set_ylim(top=ax_freq.get_ylim()[1]+10)
+            
         else:
             ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
         if len(height_y_characteristics) > 0:
             # Plot the height characteristics
             for characteristic in height_y_characteristics:
                 ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
-            ax_height.legend(ncol=len(height_y_characteristics))
+            ax_height.legend(ncol=len(height_y_characteristics), loc='upper right')
+            # Leave some space at the top of the plot
+            ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)
         else:
             ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
     else:

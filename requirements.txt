@@ -4,3 +4,4 @@ orjson
 pandas
 fastapi
 uvicorn
+matplotlib

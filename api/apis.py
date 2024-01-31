@@ -1,4 +1,5 @@
 import tempfile
+import uuid
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,12 +12,26 @@ import zipfile
 from datetime import datetime, timedelta
 from io import StringIO, BytesIO
 from enum import Enum
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 class OutputFormat(str, Enum):
     csv = "csv"
     zip = "zip"
     json = "json"
-    
+
+
+class Stations(str, Enum):
+    AT138 = "AT138"
+    DB049 = "DB049"
+    EA036 = "EA036"
+    EB040 = "EB040"
+    JR055 = "JR055"
+    PQ052 = "PQ052"
+    RL052 = "RL052"
+    RO041 = "RO041"
+    SO148 = "SO148"
+    TR170 = "TR170"
     
 # Define the set of valid stations and characteristics for the SAO metadata API
 VALID_STATIONS = {
@@ -27,7 +42,18 @@ VALID_CHARACTERISTICS = {
     'b0IRI', 'fbEs', 'ff', 'foE', 'foEs', 'foF2', 'hE', 'hEs', 'hF2', 'mufD', 'phF2lyr', 'scHgtF2pk'
     #'foF1', 'mD', 'fmin',  'fminF', 'fminE',  'fxI', 'hF''zmE', 'yE', 'qf', 'qe', 'downF', 'downE', 'downEs',  'fe', 'd', 'fMUF''hfMUF', 'delta_foF2', 'foEp', 'fhF', 'fhF2', 'foF1p', 'phF1lyr', 'zhalfNm', 'foF2p', 'fminEs', 'yF2', 'yF1', 'tec', 'b1IRI', 'd1IRI', 'foEa', 'hEa', 'foP', 'hP',  'typeEs'
 }
+
 SORTED_VALID_CHARACTERISTICS = ','.join(sorted(VALID_CHARACTERISTICS))
+
+FREQ_CHARACTERISTICS = {
+    'fbEs', 'foE', 'foEs', 'foF2', 'mufD'
+}
+
+HEIGHT_CHARACTERISTICS = {
+    'b0IRI', 'hE', 'hEs', 'hF2', 'phF2lyr', 'scHgtF2pk'
+}
+
+SORTED_BOTH_CHARACTERISTICS = ','.join(sorted(FREQ_CHARACTERISTICS.union(HEIGHT_CHARACTERISTICS)))
 
 # Get the full path to the directory containing the FastAPI script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -41,11 +67,15 @@ app = FastAPI(
         #{"name": "Get SAO Metadata","description": "Download the SAO metadata for a given datetime range."},
         {
             "name": "Run Workflow",
-            "description": "Run the SWIMAGD_IONO workflow and Download the compress results (KP data, BMAG data, and SAO metadata) in either csv, ZIP or JSON format."
+            "description": "Run the SWIMAGD_IONO workflow and Download the compress results (KP data, B data, and SAO metadata) in either csv, ZIP or JSON format."
         },
+        {
+            "name": "Plot Data",
+            "description": "Plot the KP data, B data, and SAO metadata for selected station"
+        }
     ],
     title="SWIMAGD_IONO Workflow API",
-    description="A REST API for running the SWIMAGD_IONO (SOLAR WIND MAGNETOSPHERE DRIVEN IONOSPHERIC RESPONSE) Workflow scripts.<br /><br />"+"This is a workflow with three Data Collections: <br />(a) ActivityIndicator: Collection of Kp, ap, and Ap indices by GFZ, with F10.7 from DRAO and Sn from WSC SILSO, <br />(b) SWIF Model, and <br />(c) European Ionosonde Network DIAS (European Digital upper Atmosphere Server) collection. <br /><br />More specifically, the SWIMAGD_IONO workflow provides: <br />(a) planetary 3-hour-range (T00:00:00, T03:00:00, ... , T21:00:00) index Kp, <br />(b) DSCOVR mission Magdata records (Bmag, Bx, By, Bz)), and <br />(c) distinct ionospheric characteristics (SAO records) for 10 European Digisonde stations (AT138, EB040, RO041, RL052, PQ052, JR055, EA036, DB049, SO148, TR170).",
+    description="The SWIMAGD_IONO workflow provides: <br /><br />(a) Planetary 3-hour-range (T00:00:00, T03:00:00, …, T21:00:00) Kp-index; <br />(b) DSCOVR mission Magdata records (Bmag, Bx, By, Bz) as part of the SWIF model Data Collection; <br />(c) Distinct ionospheric characteristics (SAO records) <br /><br />for 10 European Digisonde stations (AT138, EA036, EB040, DB049, JR055, PQ052, RL052, RO041, SO148, TR170).",
     version="1.1.0",
 )
 
@@ -220,8 +250,8 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 
 # Define the new `run_workflow` API
-@app.get("/run_workflow/", response_class=StreamingResponse, responses={200: {"content": {"application/octet-stream": {}},"description": "**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n",}},summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, BMAG data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
-async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {SORTED_VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: {SORTED_VALID_CHARACTERISTICS}"),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'csv', 'zip' and 'json'.")):
+@app.get("/run_workflow/", response_class=StreamingResponse, responses={200: {"content": {"application/octet-stream": {}},"description": "**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n",}},summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, B data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
+async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {SORTED_VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,ff,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk, where phF2ly=hmF2."),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'csv', 'zip' and 'json'.")):
     error_message = {"error":""}
     # Remove any whitespace from the stations and characteristics
     stations = stations.replace(' ', '')
@@ -338,7 +368,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     
     if format == OutputFormat.csv:
         # Merge all the data into 1 csv file, which is order by timmestamp, the header could be timestamp, kp, bmag, bx, by, bz, station1, characteristic1, characteristic2, station2, characteristic1, characteristic2 ... We can get the row timestamp from the first station file, and search the timestamp in the other files, if the timestamp is not in the file, we can fill the value with empty string
-        null_value = 9999
+        null_value = "9999"
         csv_header = ['Kp', 'bmag', 'bx', 'by', 'bz']
         for station in stations.split(','):
             if format != OutputFormat.csv:
@@ -481,4 +511,234 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         }
         # Use FileResponse to return the ZIP file
         return FileResponse(temp_zip_file.name, media_type="application/octet-stream", headers=headers)
+
+
+# Define the 'plot_data' API
+@app.get("/plot_data/", response_class=StreamingResponse, summary="Plot the KP data, B data, and SAO metadata for selected station.", description="Plot the KP data, BMAG data, and SAO metadata.", tags=["Plot Data"])
+async def plot_data(date_of_interest: str = Query(..., description="Date in the format 'YYYY-MM-DD', e.g. 2023-01-01"), station: Stations = Query(..., description=f"Select a station"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,ff,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk, where phF2ly=hmF2.")):
+    error_message = {"error":""}
+    # Remove any whitespace from the characteristics
+    characteristics = characteristics.replace(' ', '')
+    # Sort the stations and characteristics a-z
+    characteristics = ','.join(sorted(characteristics.split(',')))
+    
+    # Validate the inputs
+    if not set(characteristics.split(',')).issubset(FREQ_CHARACTERISTICS.union(HEIGHT_CHARACTERISTICS)):
+        error_message['error']=f"One or more characteristics are invalid. Here is the list of valid characteristics: {SORTED_BOTH_CHARACTERISTICS}"
+        return JSONResponse(status_code=200, content=error_message)
+    # Validate the date of interest
+    try:
+        datetime.strptime(date_of_interest, '%Y-%m-%d')
+    except ValueError:
+        error_message['error']="Invalid date format. Ensure the format is YYYY-MM-DD."
+        return JSONResponse(status_code=200, content=error_message)
+    
+    # Generate start_datetime and end_datetime from date_of_interest, which include the previous day data, and the next day data, at time 00:00:00
+    start_datetime = (datetime.strptime(date_of_interest, '%Y-%m-%d')-timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S')
+    end_datetime = (datetime.strptime(date_of_interest, '%Y-%m-%d') + timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%S')
+    # Construct the X Axis in Array, with 5 minutes interval, from start_datetime to end_datetime
+    
+    # Get the KP data
+    kp_script_path = f'{workflow_dir}/get_kp_data.sh'
+    # Convert the start and end datetimes to dates
+    start_date = start_datetime.split('T')[0]
+    # Add one day to the end date to ensure the end date is included in the results
+    end_date = end_datetime.split('T')[0]
+    # Execute the shell script and capture the output
+    try:
+        process = subprocess.Popen(
+            [kp_script_path, start_date, end_date, 'print-csv'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        stdout, stderr = process.communicate()
+
+        if process.returncode != 0:
+            error_message['error'] = stderr.decode()  # Parse the JSON error message
+            # Return the error message as json in the response, instead of raising an exception
+            return JSONResponse(status_code=200, content=error_message)
+    except subprocess.CalledProcessError as e:
+        error_message['error'] = str(e)
+        return JSONResponse(status_code=200, content=error_message)
+    # 3 Hours range KP data, so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
+    x_axis = pd.date_range(start_datetime, end_datetime, freq='3H')
+    # Get the KP data for the date of interest, fill the kp_y_axis with the kp value, if the timestamp is not in the x_axis, fill the value with 0
+    try:
+        kp_df = pd.read_csv(StringIO(stdout.decode()), sep=',', header=0, index_col=0)
+        kp_df.index = pd.to_datetime(kp_df.index).strftime('%Y-%m-%dT%H:%M:%S')
+        kp_y_axis = []
+        for timestamp in x_axis.strftime('%Y-%m-%dT%H:%M:%S'):
+            if timestamp in kp_df.index:
+                kp_y_axis.append(kp_df.loc[timestamp, 'Kp'])
+            else:
+                kp_y_axis.append(0)
+    except Exception as e:
+        error_message['error'] = f"Error processing output: {str(e)}"
+        return JSONResponse(status_code=200, content=error_message)
+    
+    fig,(ax_b,ax_kp, ax_freq, ax_height) = plt.subplots(4,1, figsize=(16,9), dpi=100)
+
+    # Plot the KP data using bar chart, skip the timestamp with 0 value
+    ax_kp.bar(x_axis, kp_y_axis, width=0.04, color='blue', label='Kp')
+    # Set the kp y-axis range from min to max of kp_y_axis offset by 0.5
+    ax_kp.set_ylim(min(kp_y_axis)-0.5, max(kp_y_axis)+0.5)
+    ax_kp.set_ylabel('Kp-index')
+    ax_kp.set_title(f'Planetary 3-hour-range Kp-index')
+    # Add the legend at the bottom
+    # ax_kp.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=4)
+    # Hide the x-axis tick labels
+    plt.setp(ax_kp.get_xticklabels(), visible=False)
+    
+    # Get the BMAG data
+    bmag_script_path = f'{workflow_dir}/get_bmag_data.py'
+    command = ['python3', bmag_script_path, start_datetime, end_datetime]
+    # Execute the script and capture the output
+    try:
+        process = subprocess.run(command, check=True, capture_output=True, text=True)
+        stdout, stderr = process.stdout, process.stderr
+        
+        if process.returncode != 0:
+            error_message['error'] = stderr.decode()  # Parse the JSON error message
+            return JSONResponse(status_code=200, content=error_message)
+    except subprocess.CalledProcessError as e:
+        error_message['error'] = json.loads(e.stdout)
+        return JSONResponse(status_code=200, content=error_message)
+    # 1 hour range BMAG data, so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
+    x_axis = pd.date_range(start_datetime, end_datetime, freq='1H')
+    # Get the BMAG data for the date of interest, fill the bmag_y_axis with the bmag value, if the timestamp is not in the x_axis, fill the value with 0
+    try:
+        b_df = pd.read_csv(StringIO(stdout), sep=',', header=0, index_col=0)
+        b_df.index = pd.to_datetime(b_df.index).strftime('%Y-%m-%dT%H:%M:%S')
+        bmag_y_axis = []
+        bx_y_axis = []
+        by_y_axis = []
+        bz_y_axis = []
+        for timestamp in x_axis.strftime('%Y-%m-%dT%H:%M:%S'):
+            if timestamp in b_df.index:
+                bmag_y_axis.append(b_df.loc[timestamp, 'bmag'])
+                bx_y_axis.append(b_df.loc[timestamp, 'bx'])
+                by_y_axis.append(b_df.loc[timestamp, 'by'])
+                bz_y_axis.append(b_df.loc[timestamp, 'bz'])
+            else:
+                bmag_y_axis.append(0)
+                bx_y_axis.append(0)
+                by_y_axis.append(0)
+                bz_y_axis.append(0)
+    except Exception as e:
+        error_message['error'] = f"Error processing output: {str(e)}"
+        return JSONResponse(status_code=200, content=error_message)
+
+    # bmag line style is solid bold, bx line style is dash, by line style is dot, bz line style is solid thin, all in black color
+    ax_b.plot(x_axis, bmag_y_axis, label='Bmag', linestyle='-', linewidth=4, color='black')
+    ax_b.plot(x_axis, bx_y_axis, label='Bx', linestyle='--', linewidth=3, color='black')
+    ax_b.plot(x_axis, by_y_axis, label='By', linestyle=':', linewidth=2, color='black')
+    ax_b.plot(x_axis, bz_y_axis, label='Bz', linestyle='-', linewidth=1, color='black')
+    # Set the bmag y-axis range from min to max of all bmag_y_axis, bx_y_axis, by_y_axis, bz_y_axis offset by 1
+    ax_b.set_ylim(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)-2, max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)+2)
+    # Plot the 0 line for y-axis, grey color, linewidth 0.5
+    ax_b.axhline(y=0, color='grey', linewidth=0.5)
+    ax_b.set_ylabel('Bmag, Bx, By, Bz [nT]')
+    ax_b.set_title(f'DSCOVR mission Magdata records')
+    # Add the legend
+    ax_b.legend(ncol=4)
+    # Hide the x-axis tick labels
+    plt.setp(ax_b.get_xticklabels(), visible=False)
+    
+    # Get the SAO metadata
+    sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
+    selected_station = station.value
+    command = ['python3', sao_script_path, start_datetime, end_datetime, selected_station, characteristics]
+    # Execute the script and capture the output
+    try:
+        process = subprocess.run(command, check=True, capture_output=True, text=True)
+        stdout, stderr = process.stdout, process.stderr
+        
+        if process.returncode != 0:
+            error_message['error'] = stderr.decode()
+            return JSONResponse(status_code=200, content=error_message)
+        
+    except subprocess.CalledProcessError as e:
+        error_message['error'] = json.loads(e.stdout)
+        return JSONResponse(status_code=200, content=error_message)
+    # x_axis is 5 minutes interval
+    x_axis = pd.date_range(start_datetime, end_datetime, freq='5min')
+    # Check the characteristics, depending which type of characteristics frequency or height, create the y_axis arrays group by type
+    freq_y_axis = {}
+    height_y_axis = {}
+    freq_y_characteristics = []
+    height_y_characteristics = []
+    for characteristic in characteristics.split(','):
+        if characteristic in FREQ_CHARACTERISTICS:
+            freq_y_axis[characteristic] = []
+            freq_y_characteristics.append(characteristic)
+        if characteristic in HEIGHT_CHARACTERISTICS:
+            height_y_axis[characteristic] = []
+            height_y_characteristics.append(characteristic)
+    print(freq_y_axis, height_y_axis)
+    
+    sao_df = pd.DataFrame()
+    try:
+        # Need to skip the first line, which is the file name
+        sao_df = pd.read_csv(StringIO(stdout), sep=',', header=0, index_col=0, skiprows=1)
+        sao_df.index = pd.to_datetime(sao_df.index).strftime('%Y-%m-%dT%H:%M:%S')
+        
+        # Fill the y_axis arrays with the sao_df data, if the timestamp is not in the x_axis, fill the value with 0
+        for timestamp in x_axis.strftime('%Y-%m-%dT%H:%M:%S'):
+            if timestamp in sao_df.index:
+                for characteristic in characteristics.split(','):
+                    if characteristic in FREQ_CHARACTERISTICS:
+                        freq_y_axis[characteristic].append(sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else float('nan'))
+                    if characteristic in HEIGHT_CHARACTERISTICS:
+                        height_y_axis[characteristic].append(sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else float('nan'))
+            else:
+                for characteristic in characteristics.split(','):
+                    if characteristic in FREQ_CHARACTERISTICS:
+                        freq_y_axis[characteristic].append(0)
+                    if characteristic in HEIGHT_CHARACTERISTICS:
+                        height_y_axis[characteristic].append(0)
+    except Exception as e:
+        error_message['error'] = f"Error processing output: {str(e)}"
+    ax_freq.set_ylabel(f'{",".join(freq_y_characteristics)} [MHz]')
+    ax_freq.set_title(f'{selected_station} - Ionospheric characteristics - frequencies')
+    # Hide the x-axis tick labels
+    plt.setp(ax_freq.get_xticklabels(), visible=False)
+    ax_height.set_ylabel(f'{",".join(height_y_characteristics)} [km]')
+    ax_height.set_title(f'{selected_station} - Ionospheric characteristics - heights')
+    # Show the x-axis tick lables, and reformat the timestamp to show as 1 Jan 2024 00:00:00
+    ax_height.xaxis.set_major_formatter(mdates.DateFormatter('%d %b %Y %H:%M:%S'))
+    if sao_df.empty==False:
+        if len(freq_y_characteristics) > 0:
+        # Plot the frequency characteristics
+            for characteristic in freq_y_characteristics:
+                ax_freq.plot(x_axis, freq_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2)
+            # Set range for y-axis from 0 to 12
+            ax_freq.set_ylim(0, 12)
+            ax_freq.legend(ncol=len(freq_y_characteristics))
+        else:
+            ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
+        if len(height_y_characteristics) > 0:
+            # Plot the height characteristics
+            for characteristic in height_y_characteristics:
+                ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2)
+            # Set range for y-axis from 0 to 400
+            ax_height.set_ylim(0, 400)
+            ax_height.legend(ncol=len(height_y_characteristics))
+        else:
+            ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
+    else:
+        # Add text to the plot, no data available for the selected station, date_of_interest, and characteristics
+        ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
+        # Add text to the plot, no data available for the selected station, date_of_interest, and characteristics
+        ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
+    
+    plt.tight_layout()
+    # Save the plot to a temporary file, use uuid as the filename, png format
+    plot_filename = str(uuid.uuid4())+'.png'
+    plt.savefig(f'/tmp/{plot_filename}')
+    plt.close()
+    # Return the output as a FileResponse
+    headers = {
+        'Content-Disposition': f'attachment; filename="{plot_filename}"'
+    }
+    return FileResponse(f"/tmp/{plot_filename}", media_type="image/png", headers=headers)
+    
     

@@ -655,7 +655,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         if len(freq_y_characteristics) > 0:
             # Plot the frequency characteristics
             for characteristic in freq_y_characteristics:
-                ax_freq.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="-",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='.', markersize=1)
+                ax_freq.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="-",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], drawstyle='steps-pre')
             # Place the legend at the Top Right corner
             ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot, set the bottom of the plot to 0
@@ -672,9 +672,9 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             for characteristic in height_y_characteristics:
                 if characteristic == 'hF2':
                     # Plot as using dot instead of line
-                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="--",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='.', markersize=1)
+                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="--",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], drawstyle='steps-pre')
                 else:
-                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="-",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='.', markersize=1)
+                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="-",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], drawstyle='steps-pre')
             ax_height.legend(ncol=len(height_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot
             ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)

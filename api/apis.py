@@ -15,6 +15,7 @@ from enum import Enum
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import MultipleLocator
+import numpy as np
 
 class OutputFormat(str, Enum):
     zip = "zip"
@@ -512,8 +513,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     end_datetime_offset = datetime.strptime(end_datetime, '%Y-%m-%dT%H:%M:%S') + timedelta(hours=2)
     ax_b.set_xlim(start_datetime_offset, end_datetime_offset)
     ax_kp.set_xlim(start_datetime_offset, end_datetime_offset)
-    ax_freq.set_xlim(start_datetime_offset, end_datetime_offset)
-    ax_height.set_xlim(start_datetime_offset, end_datetime_offset)
+    
     # Calculate the major tick positions
     major_ticks = pd.date_range(datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S'), periods=7, freq='12H')
     for ax in (ax_b, ax_kp, ax_freq, ax_height):
@@ -533,10 +533,11 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     # Plot the KP data using bar chart, skip the timestamp with 0 value
     ax_kp.bar(x_axis, kp_y_axis, width=0.04, color='#156082', label='Kp')
     # Set the kp y-axis range from min to max of kp_y_axis offset by 0.5
-    ax_kp.set_ylim(min(kp_y_axis)-0.5, max(kp_y_axis)+0.5)
-    # Add ticks (grey color lines) to the Y-axis
-    for y in range(int(min(kp_y_axis)) - 1, int(max(kp_y_axis)) + 2):
-        ax_kp.axhline(y, color='lightgrey', linestyle='-', linewidth=0.5)
+    ax_kp.set_ylim(0, max(kp_y_axis)+0.5)
+    # Set the major ticks to be every 1
+    ax_kp.yaxis.set_major_locator(MultipleLocator(1))
+    # Draw the horizontal line at each major tick position
+    ax_kp.yaxis.grid(True, linestyle='-', linewidth=0.5)
     
     ax_kp.set_ylabel('Kp-index')
     ax_kp.set_title(f'Planetary 3-hour-range Kp-index')
@@ -584,22 +585,16 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     ax_b.plot(x_axis, bx_y_axis, label='Bx', linestyle='--', linewidth=3, color='black')
     ax_b.plot(x_axis, by_y_axis, label='By', linestyle=':', linewidth=2, color='black')
     ax_b.plot(x_axis, bz_y_axis, label='Bz', linestyle='-', linewidth=1, color='black')
-    # Set the bmag y-axis range from min to max of all bmag_y_axis, bx_y_axis, by_y_axis, bz_y_axis offset by 1, step is 2
-    ax_b.set_ylim(int(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis))- 1, int(max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis))+2)
-    # Set the y-axis ticks step to 2
-    ax_b.yaxis.set_major_locator(MultipleLocator(2))
-    # Plot the 0 line for y-axis, grey color, linewidth 0.5
-    # ax_b.axhline(y=0, color='grey', linewidth=0.5, linestyle='--')
-    # Add ticks (grey color lines) to the Y-axis, step is 2
-    for y in range(int(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)) - 1, int(max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)) + 3, 2):
-        if y != 0:
-            ax_b.axhline(y, color='lightgrey', linestyle='-', linewidth=0.5)
-        else:
-            ax_b.axhline(y, color='black', linestyle='-', linewidth=0.5)
+    # Set the y-axis range from min to max of all bmag_y_axis, bx_y_axis, by_y_axis, bz_y_axis offset by 20% of the axis height, auto scale
+    ax_b.set_ylim(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)-1, max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)+int(0.4*(max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)-min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis))))
+    # Set the major ticks to be every 3
+    ax_b.yaxis.set_major_locator(MultipleLocator(5))
+    # Draw the horizontal line at each major tick position
+    ax_b.yaxis.grid(True, linestyle='-', linewidth=0.5)
     ax_b.set_ylabel('Bmag, Bx, By, Bz [nT]')
+    # Fix the legend position to the top right corner
+    ax_b.legend(ncol=4, loc='upper right')
     ax_b.set_title(f'DSCOVR mission Magdata records')
-    # Add the legend
-    ax_b.legend(ncol=4)
     
     # Get the SAO metadata
     sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
@@ -618,43 +613,27 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         error_message['error'] = json.loads(e.stdout)
         return JSONResponse(status_code=200, content=error_message)
     # x_axis is 5 minutes interval, from start_datetime to end_datetime
-    x_axis = pd.date_range(start_datetime, end_datetime, freq='5min')
+    x_axis = pd.date_range(start_datetime, end_datetime, freq='5T')
     # Check the characteristics, depending which type of characteristics frequency or height, create the y_axis arrays group by type
-    freq_y_axis = {}
-    height_y_axis = {}
     freq_y_characteristics = []
     height_y_characteristics = []
     for characteristic in characteristics.split(','):
         if characteristic in FREQ_CHARACTERISTICS:
-            freq_y_axis[characteristic] = []
             freq_y_characteristics.append(characteristic)
         if characteristic in HEIGHT_CHARACTERISTICS:
-            height_y_axis[characteristic] = []
             height_y_characteristics.append(characteristic)
-    print(freq_y_axis, height_y_axis)
     
     sao_df = pd.DataFrame()
     try:
         # Need to skip the first line, which is the file name
         sao_df = pd.read_csv(StringIO(stdout), sep=',', header=0, index_col=0, skiprows=1)
         sao_df.index = pd.to_datetime(sao_df.index).strftime('%Y-%m-%dT%H:%M:%S')
-        
-        # Fill the y_axis arrays with the sao_df data, if the timestamp is not in the x_axis, fill the value with 0
-        for timestamp in x_axis.strftime('%Y-%m-%dT%H:%M:%S'):
-            if timestamp in sao_df.index:
-                for characteristic in characteristics.split(','):
-                    if characteristic in FREQ_CHARACTERISTICS:
-                        freq_y_axis[characteristic].append(sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else float('nan'))
-                    if characteristic in HEIGHT_CHARACTERISTICS:
-                        height_y_axis[characteristic].append(sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else float('nan'))
-            else:
-                for characteristic in characteristics.split(','):
-                    if characteristic in FREQ_CHARACTERISTICS:
-                        freq_y_axis[characteristic].append(0)
-                    if characteristic in HEIGHT_CHARACTERISTICS:
-                        height_y_axis[characteristic].append(0)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
+    sao_df_x_axis = pd.to_datetime(sao_df.index)
+    # Set the x-axis range from sao_df index min to max, with 1 second interval
+    ax_freq.set_xlim(start_datetime_offset, end_datetime_offset)
+    ax_height.set_xlim(start_datetime_offset, end_datetime_offset)
     ax_freq.set_ylabel(f'Frequencies [MHz]')
     ax_freq.set_title(f'{selected_station} - Ionospheric characteristics - frequencies: {",".join(freq_y_characteristics)} [MHz]')
     # Hide the x-axis tick labels
@@ -665,14 +644,16 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         if len(freq_y_characteristics) > 0:
             # Plot the frequency characteristics
             for characteristic in freq_y_characteristics:
-                ax_freq.plot(x_axis, freq_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
+                # print(sao_df[characteristic].index.values, sao_df[characteristic].values)
+                ax_freq.plot(sao_df_x_axis.values,sao_df[characteristic].values,'-',label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic])
             # Place the legend at the Top Right corner
             ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot, set the bottom of the plot to 0
             ax_freq.set_ylim(bottom=0, top=ax_freq.get_ylim()[1]+10)
-            # Add ticks (grey color lines) to the Y-axis, step is 10
-            for y in range(0, int(ax_freq.get_ylim()[1]) + 10, 10):
-                ax_freq.axhline(y, color='lightgrey', linestyle='-', linewidth=0.5)
+            # Add major ticks to the Y-axis, step is 20
+            ax_freq.yaxis.set_major_locator(MultipleLocator(10))
+            # For each locator, include both major and minor ticks, and draw the grid lines
+            ax_freq.yaxis.grid(True, linestyle='-', linewidth=0.5)
             
         else:
             ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
@@ -681,16 +662,16 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             for characteristic in height_y_characteristics:
                 if characteristic == 'hF2':
                     # Plot as dashed line
-                    ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='--', linewidth=2, color=CHAR_COLORS[characteristic])
+                    ax_height.plot(sao_df_x_axis.values,sao_df[characteristic].values,'--',label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic])
                 else:
-                    ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
+                    ax_height.plot(sao_df_x_axis.values,sao_df[characteristic].values,'-',label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic])
             ax_height.legend(ncol=len(height_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot
             ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)
-            # Add ticks (grey color lines) to the Y-axis, step is 100
-            for y in ax_height.get_yticks():
-                # color with lighter grey
-                ax_height.axhline(y, color='lightgrey', linestyle='-', linewidth=0.5)
+            # Add major ticks to the Y-axis, step is 200
+            ax_height.yaxis.set_major_locator(MultipleLocator(100))
+            # For each tick, draw a horizontal line
+            ax_height.yaxis.grid(True, linestyle='-', linewidth=0.5)
         else:
             ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
     else:

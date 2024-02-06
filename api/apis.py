@@ -14,7 +14,7 @@ from io import StringIO, BytesIO
 from enum import Enum
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from matplotlib.ticker import MultipleLocator
+from matplotlib.ticker import MultipleLocator, MaxNLocator
 import numpy as np
 
 class OutputFormat(str, Enum):
@@ -534,8 +534,8 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     ax_kp.bar(x_axis, kp_y_axis, width=0.04, color='#156082', label='Kp')
     # Set the kp y-axis range from min to max of kp_y_axis offset by 0.5
     ax_kp.set_ylim(0, max(kp_y_axis)+0.5)
-    # Set the major ticks to be every 1
-    ax_kp.yaxis.set_major_locator(MultipleLocator(1))
+    # Set the major ticks, maximum 5 ticks
+    ax_kp.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
     # Draw the horizontal line at each major tick position
     ax_kp.yaxis.grid(True, linestyle='-', linewidth=0.5)
     
@@ -587,8 +587,8 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     ax_b.plot(x_axis, bz_y_axis, label='Bz', linestyle='-', linewidth=1, color='black')
     # Set the y-axis range from min to max of all bmag_y_axis, bx_y_axis, by_y_axis, bz_y_axis offset by 20% of the axis height, auto scale
     ax_b.set_ylim(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)-1, max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)+int(0.4*(max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)-min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis))))
-    # Set the major ticks to be every 3
-    ax_b.yaxis.set_major_locator(MultipleLocator(5))
+    # Set the major ticks, maximum 5 ticks
+    ax_b.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
     # Draw the horizontal line at each major tick position
     ax_b.yaxis.grid(True, linestyle='-', linewidth=0.5)
     ax_b.set_ylabel('Bmag, Bx, By, Bz [nT]')
@@ -650,8 +650,8 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot, set the bottom of the plot to 0
             ax_freq.set_ylim(bottom=0, top=ax_freq.get_ylim()[1]+10)
-            # Add major ticks to the Y-axis, step is 20
-            ax_freq.yaxis.set_major_locator(MultipleLocator(10))
+            # Add major ticks to the Y-axis, maximum 5 ticks
+            ax_freq.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
             # For each locator, include both major and minor ticks, and draw the grid lines
             ax_freq.yaxis.grid(True, linestyle='-', linewidth=0.5)
             
@@ -668,8 +668,8 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             ax_height.legend(ncol=len(height_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot
             ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)
-            # Add major ticks to the Y-axis, step is 200
-            ax_height.yaxis.set_major_locator(MultipleLocator(100))
+            # Add major ticks to the Y-axis, maximum 5 ticks
+            ax_height.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
             # For each tick, draw a horizontal line
             ax_height.yaxis.grid(True, linestyle='-', linewidth=0.5)
         else:

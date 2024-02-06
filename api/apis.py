@@ -492,7 +492,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         error_message['error'] = str(e)
         return JSONResponse(status_code=200, content=error_message)
     # 3 Hours range KP data, so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
-    x_axis = pd.date_range(start_datetime, end_datetime, freq='3H')
+    x_axis = pd.date_range(start_datetime, end_datetime, freq='3h')
     # Get the KP data for the date of interest, fill the kp_y_axis with the kp value, if the timestamp is not in the x_axis, fill the value with 0
     try:
         kp_df = pd.read_csv(StringIO(stdout.decode()), sep=',', header=0, index_col=0)
@@ -515,7 +515,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     ax_kp.set_xlim(start_datetime_offset, end_datetime_offset)
     
     # Calculate the major tick positions
-    major_ticks = pd.date_range(datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S'), periods=7, freq='12H')
+    major_ticks = pd.date_range(datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S'), periods=7, freq='12h')
     for ax in (ax_b, ax_kp, ax_freq, ax_height):
         ax.set_xticks(major_ticks)
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
@@ -556,7 +556,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         error_message['error'] = e.stdout
         return JSONResponse(status_code=200, content=error_message)
     # 1 hour range BMAG data, so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
-    x_axis = pd.date_range(start_datetime, end_datetime, freq='1H')
+    x_axis = pd.date_range(start_datetime, end_datetime, freq='1h')
     # Get the BMAG data for the date of interest, fill the bmag_y_axis with the bmag value, if the timestamp is not in the x_axis, fill the value with 0
     try:
         b_df = pd.read_csv(StringIO(stdout), sep=',', header=0, index_col=0)
@@ -613,7 +613,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         error_message['error'] = json.loads(e.stdout)
         return JSONResponse(status_code=200, content=error_message)
     # x_axis is 5 minutes interval, from start_datetime to end_datetime
-    x_axis = pd.date_range(start_datetime, end_datetime, freq='5T')
+    x_axis = pd.date_range(start_datetime, end_datetime, freq='5min')
     # Check the characteristics, depending which type of characteristics frequency or height, create the y_axis arrays group by type
     freq_y_characteristics = []
     height_y_characteristics = []
@@ -627,10 +627,21 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     try:
         # Need to skip the first line, which is the file name
         sao_df = pd.read_csv(StringIO(stdout), sep=',', header=0, index_col=0, skiprows=1)
-        sao_df.index = pd.to_datetime(sao_df.index).strftime('%Y-%m-%dT%H:%M:%S')
+        sao_df.index = pd.to_datetime(sao_df.index)
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
     sao_df_x_axis = pd.to_datetime(sao_df.index)
+    x_axis = pd.to_datetime(x_axis)
+    
+    # Union the sao_df index with the x_axis, reordering the sao_df_index from earliest to latest
+    new_x_axis = x_axis.union(sao_df_x_axis).sort_values()
+    # Load the new_sao_df with the cnew sao_df_x_axis, fill the missing value with np.nan
+    new_sao_df = sao_df.reindex(new_x_axis).fillna(np.nan)
+    # Replace the value in new_sao_df with the value from sao_df with the same index
+    new_sao_df = new_sao_df.combine_first(sao_df)
+    print(f"New x-axis size: {len(x_axis)} U {len(sao_df_x_axis)} = {len(new_x_axis)}")
+
+    
     # Set the x-axis range from sao_df index min to max, with 1 second interval
     ax_freq.set_xlim(start_datetime_offset, end_datetime_offset)
     ax_height.set_xlim(start_datetime_offset, end_datetime_offset)
@@ -644,8 +655,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         if len(freq_y_characteristics) > 0:
             # Plot the frequency characteristics
             for characteristic in freq_y_characteristics:
-                # print(sao_df[characteristic].index.values, sao_df[characteristic].values)
-                ax_freq.plot(sao_df_x_axis.values,sao_df[characteristic].values,'-',label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic])
+                ax_freq.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="-",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='.', markersize=1)
             # Place the legend at the Top Right corner
             ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot, set the bottom of the plot to 0
@@ -661,10 +671,10 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             # Plot the height characteristics
             for characteristic in height_y_characteristics:
                 if characteristic == 'hF2':
-                    # Plot as dashed line
-                    ax_height.plot(sao_df_x_axis.values,sao_df[characteristic].values,'--',label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic])
+                    # Plot as using dot instead of line
+                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="--",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='.', markersize=1)
                 else:
-                    ax_height.plot(sao_df_x_axis.values,sao_df[characteristic].values,'-',label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic])
+                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="-",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='.', markersize=1)
             ax_height.legend(ncol=len(height_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot
             ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)

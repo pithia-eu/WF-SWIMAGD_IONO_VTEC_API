@@ -381,90 +381,6 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         error_message['error'] = f"Error processing output: {str(e)}"
         return JSONResponse(status_code=200, content=error_message)
     
-    if format == OutputFormat.csv:
-        # Merge all the data into 1 csv file, which is order by timmestamp, the header could be timestamp, kp, bmag, bx, by, bz, station1, characteristic1, characteristic2, station2, characteristic1, characteristic2 ... We can get the row timestamp from the first station file, and search the timestamp in the other files, if the timestamp is not in the file, we can fill the value with empty string
-        null_value = "9999"
-        csv_header = ['Kp', 'bmag', 'bx', 'by', 'bz']
-        for station in stations.split(','):
-            if format != OutputFormat.csv:
-                csv_header.append(station+'_station')
-            for characteristic in characteristics.split(','):
-                csv_header.append(station+'_'+characteristic)
-        # Create a dataframe with the header, and set timestamp as index, timestamp is build from start_datetime to end_datetime with 5 minutes interval
-        start_datetime = datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S')
-        end_datetime = datetime.strptime(end_datetime, '%Y-%m-%dT%H:%M:%S')
-        index = pd.date_range(start_datetime, end_datetime, freq='5min')
-        index = index.strftime('%Y-%m-%dT%H:%M:%S')
-        df = pd.DataFrame(columns=csv_header, index=index)
-        # Give the index a name
-        df.index.name = 'timestamp'
-        # Fill the dataframe with data
-        # Fill the KP data
-        kp_df = pd.read_csv(kp_file, sep=',', header=0, index_col=0)
-        kp_df.index = pd.to_datetime(kp_df.index).strftime('%Y-%m-%dT%H:%M:%S')
-        # Fill the KP data if have the timestamp in the dataframe, or fill the empty string
-        # The KP data is 3-hour-range (T00:00:00, T03:00:00, ... , T21:00:00), so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
-        for timestamp in kp_df.index:
-            if timestamp in df.index:
-                df.loc[timestamp, 'Kp'] = kp_df.loc[timestamp, 'Kp']
-        
-        # Fill the BMAG data
-        bmag_df = pd.read_csv(bmag_file, sep=',', header=0, index_col=0)
-        bmag_df.index = pd.to_datetime(bmag_df.index).strftime('%Y-%m-%dT%H:%M:%S')
-        # The bmag data is 1-hour-range (T00:00:00, T01:00:00, ... , T23:00:00), so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
-        for timestamp in bmag_df.index:
-            if timestamp in df.index:
-                df.loc[timestamp, 'bmag'] = bmag_df.loc[timestamp, 'bmag']
-                df.loc[timestamp, 'bx'] = bmag_df.loc[timestamp, 'bx']
-                df.loc[timestamp, 'by'] = bmag_df.loc[timestamp, 'by']
-                df.loc[timestamp, 'bz'] = bmag_df.loc[timestamp, 'bz']
-        remaining_stations = stations.split(',')
-        # Fill the SAO metadata
-        for filename, file in station_files.items():
-            file.seek(0)
-            # Only get the station name from the filename
-            station = filename.split('_')[0]
-            sao_df = pd.read_csv(file, sep=',', header=0, index_col=0, usecols=lambda column: column != 'station')
-            sao_df.index = pd.to_datetime(sao_df.index).strftime('%Y-%m-%dT%H:%M:%S')
-            for timestamp in df.index:
-                if timestamp in sao_df.index:
-                    if format != OutputFormat.csv:
-                        df.loc[timestamp, station+'_station'] = station
-                    for characteristic in sao_df.columns:
-                        # if the value is not empty, fill the value to the dataframe. or fill with 9999
-                        df.loc[timestamp, station+'_'+characteristic] = sao_df.loc[timestamp, characteristic] if pd.notnull(sao_df.loc[timestamp, characteristic]) else null_value
-                else:
-                    if format != OutputFormat.csv:
-                        df.loc[timestamp, station+'_station'] = station
-                    for characteristic in characteristics.split(','):
-                        df.loc[timestamp, station+'_'+characteristic] = null_value
-            # Remove the station from the remaining_stations
-            remaining_stations.remove(station)
-        # Fill the remaining stations with 9999
-        for station in remaining_stations:
-            for timestamp in df.index:
-                if format != OutputFormat.csv:
-                    df.loc[timestamp, station+'_station'] = station
-                for characteristic in characteristics.split(','):
-                    df.loc[timestamp, station+'_'+characteristic] = null_value
-        # Fill the empty values with empty string
-        df.fillna('', inplace=True)
-        # Convert the dataframe to csv
-        csv_file = StringIO(df.to_csv())
-        csv_file.seek(0)
-        # Return the output as a FileResponse
-        filename = f"SWIMAGD_IONO_Workflow_{start_datetime}_{end_datetime}_{stations.replace(',','_')}.csv"
-        headers = {
-            'Content-Disposition': f'attachment; filename="{filename}"',
-            'Content-Type': 'text/csv'
-        }
-        # save the csv file to a temporary file
-        temp_csv_file = tempfile.NamedTemporaryFile(delete=False)
-        temp_csv_file.write(csv_file.getvalue().encode())
-        temp_csv_file.close()
-        # Use FileResponse to return the csv file
-        return FileResponse(temp_csv_file.name, media_type="text/csv", headers=headers)
-    
     if format == OutputFormat.json:
         # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma
         kp_json = pd.read_csv(kp_file, sep=',', header=0, index_col=0).to_json(orient='index')
@@ -701,7 +617,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     except subprocess.CalledProcessError as e:
         error_message['error'] = json.loads(e.stdout)
         return JSONResponse(status_code=200, content=error_message)
-    # x_axis is 5 minutes interval
+    # x_axis is 5 minutes interval, from start_datetime to end_datetime
     x_axis = pd.date_range(start_datetime, end_datetime, freq='5min')
     # Check the characteristics, depending which type of characteristics frequency or height, create the y_axis arrays group by type
     freq_y_axis = {}

@@ -14,9 +14,9 @@ from io import StringIO, BytesIO
 from enum import Enum
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.ticker import MultipleLocator
 
 class OutputFormat(str, Enum):
-    csv = "csv"
     zip = "zip"
     json = "json"
 
@@ -35,19 +35,19 @@ class Stations(str, Enum):
 
 # Define the colors for each characteristic
 CHAR_COLORS = {
-    'b0IRI': 'red',
-    'fbEs': 'blue',
-    'ff': 'green',
-    'foE': 'orange',
-    'foEs': 'purple',
-    'foF2': 'brown',
-    'hE': 'pink',
-    'hEs': 'gray',
-    'hF2': 'olive',
-    'mufD': 'cyan',
-    'phF2lyr': 'magenta',
-    'scHgtF2pk': 'yellow'
+    'b0IRI': '#C04F15',
+    'fbEs': '#FF0000',
+    'foE': '#0F9ED5',
+    'foEs': '#4EA72E',
+    'foF2': '#156082',
+    'hE': '#0F9ED5',
+    'hEs': '#4EA72E',
+    'hF2': '#156082',
+    'mufD': '#D86ECC',
+    'phF2lyr': '#156082',
+    'scHgtF2pk': '#0D3512'
 }
+
 # Define the set of valid stations and characteristics for the SAO metadata API
 VALID_STATIONS = {
     'AT138', 'DB049', 'EA036', 'EB040', 'JR055', 'PQ052', 'RL052', 'RO041', 'SO148', 'TR170'
@@ -266,7 +266,7 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 # Define the new `run_workflow` API
 @app.get("/run_workflow/", response_class=StreamingResponse, responses={200: {"content": {"application/octet-stream": {}},"description": "**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n",}},summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, B data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
-async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {SORTED_VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,ff,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk, where phF2ly=hmF2."),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'csv', 'zip' and 'json'.")):
+async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2023-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {SORTED_VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,ff,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk, where phF2ly=hmF2."),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'zip' and 'json'.")):
     error_message = {"error":""}
     # Remove any whitespace from the stations and characteristics
     stations = stations.replace(' ', '')
@@ -591,18 +591,39 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         return JSONResponse(status_code=200, content=error_message)
     
     fig,(ax_b,ax_kp, ax_freq, ax_height) = plt.subplots(4,1, figsize=(16,9), dpi=100)
-
+    # For all the subplots, set the x-axis range from start_datetime-2 hours to end_datetime+2 hours, need to convert the string to datetime
+    start_datetime_offset = datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S') - timedelta(hours=2)
+    end_datetime_offset = datetime.strptime(end_datetime, '%Y-%m-%dT%H:%M:%S') + timedelta(hours=2)
+    ax_b.set_xlim(start_datetime_offset, end_datetime_offset)
+    ax_kp.set_xlim(start_datetime_offset, end_datetime_offset)
+    ax_freq.set_xlim(start_datetime_offset, end_datetime_offset)
+    ax_height.set_xlim(start_datetime_offset, end_datetime_offset)
+    # Calculate the major tick positions
+    major_ticks = pd.date_range(datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S'), periods=7, freq='12H')
+    for ax in (ax_b, ax_kp, ax_freq, ax_height):
+        ax.set_xticks(major_ticks)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        # Set the minor ticks to be every 1 hour
+        ax.xaxis.set_minor_locator(mdates.HourLocator(interval=1))
+        # Plot the x-axis with grey color, linewidth 0.5, from top to bottom
+        ax.xaxis.grid(True, which='major', color='grey', linestyle='-', linewidth=0.5)
+        # Plot the x-axis for minor ticks without any text
+        ax.xaxis.grid(True, which='minor', color='lightgrey', linestyle='-', linewidth=0.5)
+        # Make all the lines in the plot to be under the grid lines, not cover the data
+        ax.set_axisbelow(True)
+        # if is ax_height, use customed x-axis label, format as 00:00:00, new line, Jan 01, 2023
+        if ax == ax_height:
+            ax.set_xticklabels([datetime.strftime(x, '%H:%M:%S\n%b %d, %Y') for x in major_ticks])
     # Plot the KP data using bar chart, skip the timestamp with 0 value
-    ax_kp.bar(x_axis, kp_y_axis, width=0.04, color='blue', label='Kp')
+    ax_kp.bar(x_axis, kp_y_axis, width=0.04, color='#156082', label='Kp')
     # Set the kp y-axis range from min to max of kp_y_axis offset by 0.5
     ax_kp.set_ylim(min(kp_y_axis)-0.5, max(kp_y_axis)+0.5)
+    # Add ticks (grey color lines) to the Y-axis
+    for y in range(int(min(kp_y_axis)) - 1, int(max(kp_y_axis)) + 2):
+        ax_kp.axhline(y, color='lightgrey', linestyle='-', linewidth=0.5)
+    
     ax_kp.set_ylabel('Kp-index')
     ax_kp.set_title(f'Planetary 3-hour-range Kp-index')
-    # Add the legend at the bottom
-    # ax_kp.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=4)
-    # Hide the x-axis tick labels
-    plt.setp(ax_kp.get_xticklabels(), visible=False)
-    
     # Get the BMAG data
     bmag_script_path = f'{workflow_dir}/get_bmag_data.py'
     command = ['python3', bmag_script_path, start_datetime, end_datetime]
@@ -615,7 +636,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             error_message['error'] = stderr.decode()  # Parse the JSON error message
             return JSONResponse(status_code=200, content=error_message)
     except subprocess.CalledProcessError as e:
-        error_message['error'] = json.loads(e.stdout)
+        error_message['error'] = e.stdout
         return JSONResponse(status_code=200, content=error_message)
     # 1 hour range BMAG data, so we need to get the timestamp with the format YYYY-MM-DDTHH:MM:SS
     x_axis = pd.date_range(start_datetime, end_datetime, freq='1H')
@@ -647,16 +668,22 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     ax_b.plot(x_axis, bx_y_axis, label='Bx', linestyle='--', linewidth=3, color='black')
     ax_b.plot(x_axis, by_y_axis, label='By', linestyle=':', linewidth=2, color='black')
     ax_b.plot(x_axis, bz_y_axis, label='Bz', linestyle='-', linewidth=1, color='black')
-    # Set the bmag y-axis range from min to max of all bmag_y_axis, bx_y_axis, by_y_axis, bz_y_axis offset by 1
-    ax_b.set_ylim(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)-2, max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)+2)
+    # Set the bmag y-axis range from min to max of all bmag_y_axis, bx_y_axis, by_y_axis, bz_y_axis offset by 1, step is 2
+    ax_b.set_ylim(int(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis))- 1, int(max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis))+2)
+    # Set the y-axis ticks step to 2
+    ax_b.yaxis.set_major_locator(MultipleLocator(2))
     # Plot the 0 line for y-axis, grey color, linewidth 0.5
-    ax_b.axhline(y=0, color='grey', linewidth=0.5, linestyle='--')
+    # ax_b.axhline(y=0, color='grey', linewidth=0.5, linestyle='--')
+    # Add ticks (grey color lines) to the Y-axis, step is 2
+    for y in range(int(min(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)) - 1, int(max(bmag_y_axis+bx_y_axis+by_y_axis+bz_y_axis)) + 3, 2):
+        if y != 0:
+            ax_b.axhline(y, color='lightgrey', linestyle='-', linewidth=0.5)
+        else:
+            ax_b.axhline(y, color='black', linestyle='-', linewidth=0.5)
     ax_b.set_ylabel('Bmag, Bx, By, Bz [nT]')
     ax_b.set_title(f'DSCOVR mission Magdata records')
     # Add the legend
     ax_b.legend(ncol=4)
-    # Hide the x-axis tick labels
-    plt.setp(ax_b.get_xticklabels(), visible=False)
     
     # Get the SAO metadata
     sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
@@ -715,30 +742,39 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     ax_freq.set_ylabel(f'Frequencies [MHz]')
     ax_freq.set_title(f'{selected_station} - Ionospheric characteristics - frequencies: {",".join(freq_y_characteristics)} [MHz]')
     # Hide the x-axis tick labels
-    plt.setp(ax_freq.get_xticklabels(), visible=False)
+    # plt.setp(ax_freq.get_xticklabels(), visible=False)
     ax_height.set_ylabel(f'Heights [km]')
     ax_height.set_title(f'{selected_station} - Ionospheric characteristics - heights: {",".join(height_y_characteristics)} [km]')
-    # Show the x-axis tick lables, and reformat the timestamp to show as 1 Jan 2024 00:00:00
-    ax_height.xaxis.set_major_formatter(mdates.DateFormatter('%d %b %Y %H:%M:%S'))
     if sao_df.empty==False:
         if len(freq_y_characteristics) > 0:
-        # Plot the frequency characteristics
+            # Plot the frequency characteristics
             for characteristic in freq_y_characteristics:
                 ax_freq.plot(x_axis, freq_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
             # Place the legend at the Top Right corner
             ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right')
-            # Leave some space at the top of the plot
-            ax_freq.set_ylim(top=ax_freq.get_ylim()[1]+10)
+            # Leave some space at the top of the plot, set the bottom of the plot to 0
+            ax_freq.set_ylim(bottom=0, top=ax_freq.get_ylim()[1]+10)
+            # Add ticks (grey color lines) to the Y-axis, step is 10
+            for y in range(0, int(ax_freq.get_ylim()[1]) + 10, 10):
+                ax_freq.axhline(y, color='lightgrey', linestyle='-', linewidth=0.5)
             
         else:
             ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
         if len(height_y_characteristics) > 0:
             # Plot the height characteristics
             for characteristic in height_y_characteristics:
-                ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
+                if characteristic == 'hF2':
+                    # Plot as dashed line
+                    ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='--', linewidth=2, color=CHAR_COLORS[characteristic])
+                else:
+                    ax_height.plot(x_axis, height_y_axis[characteristic], label=characteristic, linestyle='-', linewidth=2, color=CHAR_COLORS[characteristic])
             ax_height.legend(ncol=len(height_y_characteristics), loc='upper right')
             # Leave some space at the top of the plot
             ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)
+            # Add ticks (grey color lines) to the Y-axis, step is 100
+            for y in ax_height.get_yticks():
+                # color with lighter grey
+                ax_height.axhline(y, color='lightgrey', linestyle='-', linewidth=0.5)
         else:
             ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
     else:

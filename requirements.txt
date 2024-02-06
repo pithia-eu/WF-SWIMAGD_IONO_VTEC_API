@@ -5,3 +5,4 @@ pandas
 fastapi
 uvicorn
 matplotlib
+pyarrow

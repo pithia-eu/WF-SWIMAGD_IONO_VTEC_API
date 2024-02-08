@@ -655,15 +655,17 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         if len(freq_y_characteristics) > 0:
             # Plot the frequency characteristics
             for characteristic in freq_y_characteristics:
-                ax_freq.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="-",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], drawstyle='steps-pre')
-            # Place the legend at the Top Right corner
-            ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right')
+                ax_freq.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
             # Leave some space at the top of the plot, set the bottom of the plot to 0
             ax_freq.set_ylim(bottom=0, top=ax_freq.get_ylim()[1]+10)
             # Add major ticks to the Y-axis, maximum 5 ticks
             ax_freq.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
             # For each locator, include both major and minor ticks, and draw the grid lines
             ax_freq.yaxis.grid(True, linestyle='-', linewidth=0.5)
+            # Make the marker in the legend to be bigger
+            ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right', markerscale=2)
+            # Display the legend in columns, all columns in one row
+            
             
         else:
             ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
@@ -672,16 +674,18 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             for characteristic in height_y_characteristics:
                 if characteristic == 'hF2':
                     # Plot as using dot instead of line
-                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="--",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], drawstyle='steps-pre')
+                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
                 else:
-                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="-",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], drawstyle='steps-pre')
-            ax_height.legend(ncol=len(height_y_characteristics), loc='upper right')
+                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
+            
             # Leave some space at the top of the plot
             ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)
             # Add major ticks to the Y-axis, maximum 5 ticks
             ax_height.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
             # For each tick, draw a horizontal line
             ax_height.yaxis.grid(True, linestyle='-', linewidth=0.5)
+            # Make the marker in the legend to be bigger
+            ax_height.legend(ncol=len(height_y_characteristics), loc='upper right', markerscale=2)
         else:
             ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
     else:

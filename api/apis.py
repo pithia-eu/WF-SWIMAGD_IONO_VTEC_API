@@ -43,7 +43,7 @@ CHAR_COLORS = {
     'foF2': '#156082',
     'hE': '#0F9ED5',
     'hEs': '#4EA72E',
-    'hF2': '#156082',
+    'hF2': '#6D1582',
     'mufD': '#D86ECC',
     'phF2lyr': '#156082',
     'scHgtF2pk': '#0D3512'
@@ -672,11 +672,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         if len(height_y_characteristics) > 0:
             # Plot the height characteristics
             for characteristic in height_y_characteristics:
-                if characteristic == 'hF2':
-                    # Plot as using dot instead of line
-                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
-                else:
-                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
+                ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
             
             # Leave some space at the top of the plot
             ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)
@@ -695,8 +691,8 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
     
     plt.tight_layout()
-    # Save the plot to a temporary file, use uuid as the filename, png format
-    plot_filename = str(uuid.uuid4())+'.png'
+    # Save the plot to a temporary file, png format, filename is station_date_of_interest_characteristics_seperated_by_-.png
+    plot_filename = f"{selected_station}_{date_of_interest}_{characteristics.replace(',','-')}.png"
     plt.savefig(f'/tmp/{plot_filename}')
     plt.close()
     # Return the output as a FileResponse

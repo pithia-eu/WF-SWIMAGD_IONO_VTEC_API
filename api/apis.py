@@ -540,7 +540,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     ax_kp.yaxis.grid(True, linestyle='-', linewidth=0.5)
     
     ax_kp.set_ylabel('Kp-index')
-    ax_kp.set_title(f'Planetary 3-hour-range Kp-index')
+    ax_kp.set_title(f'Geomagnetic three-hourly Kp-index')
     # Get the BMAG data
     bmag_script_path = f'{workflow_dir}/get_bmag_data.py'
     command = ['python3', bmag_script_path, start_datetime, end_datetime]

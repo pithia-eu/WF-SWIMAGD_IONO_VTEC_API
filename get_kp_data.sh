@@ -48,7 +48,7 @@ validate_date "$2"
 validate_output_type "$3"
 
 # The URL of the dataset
-DATA_URL="https://kp.gfz-potsdam.de/app/files/Kp_ap_Ap_SN_F107_since_1932.txt"
+DATA_URL="https://kp.gfz.de/app/files/Kp_ap_Ap_SN_F107_since_1932.txt"
 
 # Local file path relative to the script's directory
 LOCAL_FILE_PATH="$(dirname "$0")/dataset/Kp_ap_Ap_SN_F107_since_1932.txt"

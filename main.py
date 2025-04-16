@@ -93,12 +93,13 @@ app = FastAPI(
     title="SWIMAGD_IONO Workflow API",
     description="The SWIMAGD_IONO workflow provides: <br /><br />(a) Geomagnetic three-hourly (T00:00:00, T03:00:00, …, T21:00:00) Kp index​; <br />(b) DSCOVR mission Magdata records (Bmag, Bx, By, Bz) as part of the SWIF model Data Collection; <br />(c) Distinct ionospheric characteristics (SAO records) for 10 European Digisonde stations (AT138, EA036, EB040, DB049, JR055, PQ052, RL052, RO041, SO148, TR170).",
     version="1.1.0",
+    root_path="/wf-swimagd_iono"
 )
 
 # Configure CORS for all domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    # allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers

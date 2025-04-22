@@ -1,0 +1,88 @@
+#!/bin/csh -f
+#
+mkdir -p ~/run
+cd ~/run
+echo "###########################################################################"
+#
+echo "AUDITOR tractor experiment 2017 6 13 on The Netherlands (AUDITORJun2017)"
+#
+echo "VTEC evolution over the AUDITOR tractor exp. (The Netherlands)"
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 12 6 14 4.556064337 uqrg AUDITOR n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 12 6 14 4.556064337 uqrg AUDITOR n VTECvsLAT_extraction
+
+
+echo "VTEC evolution over the Meridian of Mendoza, Argentina (32°53′00″S 68°50′00″O)"
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 12 6 14 -69 uqrg AUDITOR n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 12 6 14 -69 uqrg AUDITOR n VTECvsLAT_extraction
+#
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2017 6 12 2017 6 14 uqrg 120 AUDITOR n VTECvsTIME_extraction borj ijmu valp rgao nama tmp1"
+~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2017 6 12 2017 6 14 uqrg 120 AUDITOR n VTECvsTIME_extraction borj ijmu valp rgao nama tmp1
+#
+#Usage: gimrnx2stec.v4.scr year0 (e.g. 2017)  month0 (e.g. 6)  day_of_month0 (e.g. 12)  year1 (e.g. 2017)  month1 (e.g. 6)  day_of_month1 (e.g. 14)  GIM_IONEX_ID (e.g. uqrg)  rinex_sampling_time_in_seconds (e.g. 30)  rinex_to_be_gathered_locally (n, or the absolute address of the local data subdirectory just ONE level below the working directory, e.g. GNSS_RINEXv2_zipped_hatanaka_files)  runID (e.g. Tractor_exp)  generate_plots (y/n)  view_overall_plot_STECvsTIME  (y/n)  run_level (STEC_computation, STEC_extraction, overall_STECvsTIME)  external_coordinates_file (n -IGS sinex- / h -RINEX header- / r -Very raw from GPS sat. in view- / file, e.g. ~/w/datasets/coordinates/permanent_receivers/xyz.tot.all)   receiverID_1 (e.g. borj) ... receiverID_N (e.g. ijmu)
+echo "~/w/bin/gimrnx2stec.v4.scr 2017 6 12 2017 6 14 uqrg 30 n AUDITOR y n STEC_computation borj ijmu"
+~/w/bin/gimrnx2stec.v4.scr 2017 6 12 2017 6 14 uqrg 30 n AUDITOR y n STEC_computation borj ijmu
+###~/w/bin/gimrnx2stec.v2.scr 2017 6 12 2017 6 14 uqrg 30 AUDITOR y n overall_STECvsTIME borj ijmu
+#
+echo "PROV.EXIT"
+exit -1
+echo "###########################################################################"
+#
+echo "Solar ECLIPSE Aug. 2017 (ECLIPSE2017)"
+# 
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 8 20 8 22 -105 uqrg ECLIPSE n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 8 20 8 22 -105 uqrg ECLIPSE n VTECvsLAT_extraction
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2017 8 20 2017 8 22  uqrg 120 ECLIPSE n VTECvsTIME_extraction quin amc2 scub"
+~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2017 8 20 2017 8 22  uqrg 120 ECLIPSE n VTECvsTIME_extraction quin amc2 scub
+echo "~/w/bin/gimrnx2stec.v4.scr 2017 8 21 2017 8 21 uqrg 30 ECLIPSE y n STEC_computation quin amc2 scub"
+~/w/bin/gimrnx2stec.v4.scr 2017 8 21 2017 8 21 uqrg 30 ECLIPSE y n STEC_computation quin amc2 scub
+#
+echo "###########################################################################"
+#
+echo "X-class Solar FLARE Sept. 2017 (XFLARESep2017): September 6th, 2017 (doy 249)"
+#
+#- RT-plot: ftp://chapman.upc.es/.monitor/2017/249/NRT/GSFLAD/plots/gsflad.2017.249.musf.gif
+#- RT-GSFLAI values: ftp://chapman.upc.es/.monitor/2017/249/NRT/GSFLAD/gsflad.2017.249.musf
+# - Format, please look at the following document, in pages 8 (GSFLAD), associate message MUSF in page 11 (populating previous file), explanation of fields in pages 12-15, up to dedicated brief explanation in page 26:
+#     ftp://chapman.upc.es/.formats/GNSS-ID35-CAPF-ICD-QQ-A-001_AppendixL_UPC_external_products_v12b+SRMTID_details.pdf
+#
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 9 5 9 7 0 uqrg FLARE n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 9 5 9 7 0 uqrg FLARE n VTECvsLAT_extraction
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 9 5 9 7 10 uqrg FLARE n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 9 5 9 7 10 uqrg FLARE n VTECvsLAT_extraction
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2017 9 5  2017 9 7  uqrg 120 FLARE n VTECvsTIME_extraction mas1 ebre onsa sthl"
+~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2017 9 5  2017 9 7  uqrg 120 FLARE n VTECvsTIME_extraction mas1 ebre onsa sthl
+echo "~/w/bin/gimrnx2stec.v4.scr 2017 9 5  2017 9 7 uqrg 30 FLARE y n STEC_computation mas1 ebre onsa sthl"
+~/w/bin/gimrnx2stec.v4.scr 2017 9 5  2017 9 7 uqrg 30 FLARE y n STEC_computation mas1 ebre onsa sthl
+
+echo "###########################################################################"
+
+echo "2017 St. Patricks' day Major Geomagnetic Storm, 17-18 March 2015 (GSTORM)"
+
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2015 3 14 3 20 0 uqrg GSTORM n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2015 3 14 3 20 0 uqrg GSTORM n VTECvsLAT_extraction
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2015 3 14 3 20 -70 uqrg GSTORM n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2015 3 14 3 20 -70 uqrg GSTORM n VTECvsLAT_extraction
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2015 3 14  2015 3 20  uqrg 120 GSTORM n VTECvsTIME_extraction mas1 ebre onsa suth rgao valp"
+~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2015 3 14  2015 3 20  uqrg 120 GSTORM n VTECvsTIME_extraction mas1 ebre onsa suth rgao valp
+echo "~/w/bin/gimrnx2stec.v4.scr 2015 3 14  2015 3 20 uqrg 30 GSTORM y n STEC_computation mas1 ebre onsa sthl"
+~/w/bin/gimrnx2stec.v4.scr 2015 3 14  2015 3 20 uqrg 30 GSTORM y n STEC_computation mas1 ebre onsa sthl
+####~/w/bin/gimrnx2stec.scr 2015 3 14  2015 3 20 uqrg 30 GSTORM y n overall_STECvsTIME anka mas1 ebre onsa suth rgao valp
+#
+echo "###########################################################################"
+#
+echo "ATMOSFILLER (Performances at different receiver-islands on a sort of Atlantic Ocean chain, coinciding with one ship experiment during Atmosfiller project)"
+
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 6 6 6 8.9728 uqrg ATMOSFILLER n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 6 6 6 8.9728 uqrg ATMOSFILLER n VTECvsLAT_extraction
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 6 6 6 -15.6332 uqrg ATMOSFILLER n VTECvsLAT_extraction"
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 6 6 6 -15.6332 uqrg ATMOSFILLER n VTECvsLAT_extraction
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2017 6 6 2017 6 6 uqrg 120 ATMOSFILLER n VTECvsTIME_extraction hofn reyk flrs terc pdel cagl cagz func mas1 sthl"
+~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2017 6 6 2017 6 6 uqrg 120 ATMOSFILLER n VTECvsTIME_extraction hofn reyk flrs terc pdel cagl cagz func mas1 sthl
+echo "~/w/bin/gimrnx2stec.v4.scr 2017 6 6 2017 6 6 uqrg 30 ATMOSFILLER y n STEC_computation hofn reyk flrs terc pdel cagl cagz func mas1 sthl"
+~/w/bin/gimrnx2stec.v4.scr 2017 6 6 2017 6 6 uqrg 30 ATMOSFILLER y n STEC_computation hofn reyk flrs terc pdel cagl cagz func mas1 sthl
+#
+echo "###########################################################################"
+#
+echo "2017 St. Patricks' day Major Geomagnetic Storm, 17 March 2015 (GIM gradient, MoNEWIC)"
+echo "Usage: ~/w/bin/gim2vtec-grad.v2.scr year (e.g. 2015)  doy (e.g. 75)  GIM_id (e.g. uqrg)  computation_gradient_mode (consecutive vs centered)  lon0deg_to_study_distrib_vs_time (e.g. -20)  lon1deg_to_study_distrib_vs_time (e.g. 50)  lat0deg_to_study_distrib_vs_time (e.g. 30)  lat1deg_to_study_distrib_vs_time (e.g. 70)  run_id (e.g. MoNEWIC01)"
+~/w/bin/gim2vtec-grad.v2.scr 2015 75 uqrg centered -20 50 30 70 MoNEWIC01

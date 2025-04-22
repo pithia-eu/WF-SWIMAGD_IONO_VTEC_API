@@ -1,0 +1,3569 @@
+#!/bin/csh -f
+echo $#
+if ( $# != 42 ) then
+	echo
+	echo "Usage: "$0" -with the following arguments-  "
+	echo " #1: run_ID_extension (e.g. LIDAR_flight_SE_Autralia)   "
+	echo " #2: source_of_measurements: rinex or messages_input (e.g. messages_input)"
+	echo " #3: messages_input_file (in case of selecting 'messages_input' in previous option, e.g. ~/wrt/run/auditor_test_generating_messages_input/messages1.input.auditor.p13-14.02.2017.gz)"
+	echo " #4: run_level_start (e.g. RINEX_and_nav_files_adquisition [*])"  
+	echo " #5: run_level_end (e.g. prefits [*])"
+	echo "	[*] run levels: "
+        echo "          dummy_start" 
+	echo "		gathering_rinex_files"
+	echo "		gathering_orbits_clocks"
+	echo "		gathering_apriori_rec_coordinates"
+	echo "		map_with_involved_receivers"
+	echo "		voxels_definition"
+	echo "		gathering_ephemeris_message"
+	echo "		gathering_C1-P1"
+	echo "		gathering_GPS_constellation_status"
+	echo "		generating_messages_input"
+	echo "		expected_vs_observed_satellite_visibility"
+	echo "		generating_prefits"
+	echo "		analyzing_prefits_phase_cont_arc_id_vs_time"
+	echo "		generating_messages_output"
+	echo "          generating_messages_output_after_removing_filter_postfit_outliers"
+	echo "          generating_messages_output_after_fixing_DDamb_from_filter"
+        echo "          generating_gipsy_output"
+	echo "		analyzing_messages_output_DDDprefits_Lc"
+	echo "		analyzing_messages_output_DDNw_from_BcBi_vs_from_MW"
+	echo "		analyzing_messages_output_actual_fixing_ambiguity_rates"
+	echo "		analyzing_messages_output_VTEC_vs_GIM_VTEC"
+	echo "		analyzing_messages_output_receiver_coordinates"
+	echo "		analyzing_messages_output_dcbs"
+	echo "		analyzing_messages_output_satellite_clocks_vs_IGS"
+	echo "		analyzing_messages_output_tropospheric_estimation_vs_IGS"
+        echo "          analyzing_messages_output_tropospheric_estimation_vs_IGS_Gipsy"
+        echo "          analyzing_messages_output_tropospheric_estimation_vs_COD"
+        echo "          analyzing_messages_output_tropospheric_estimation_vs_JPL"
+	echo "		analyzing_messages_output_dstec_adjustment"
+	echo "		analyzing_messages_output_postfit_individual_residuals"
+	echo "		analyzing_messages_output_STEC_from_obs_and_ambiguities_and_doing_TEC_interpolation"
+	echo "		STECs_comparison_w_GIMs_prep_and_plots"
+	echo "		STECs_comparison_w_GIMs_statistics"
+	echo " #6: year0 (e.g. 2014)"
+	echo " #7: doy0 (e.g. 112)"
+	echo " #8: hh0 (e.g. 0)"
+	echo " #9: year1 (e.g. 2014)"
+	echo " #10: doy1 (e.g. 113)"
+	echo " #11: hh1 (e.g. 4)"
+	echo " #12: refrec (e.g. tmra)"
+	echo " #13: elemin_refsat (in degrees, e.g. 25)"
+	echo " #14: localrep_RINEX (e.g. /d4/home/ionex4/w/localrep/rinex/piom_fipp/LIDAR_flight)"
+	echo " #15: dtsec_initial_RINEX (e.g. 30)"
+   	echo " #16: dtsec_down_CPF_TOMION (e.g. 300)"
+	echo " #17: dtsec_down_CPF_MSTIDmodel (e.g. 30)"
+	echo " #18: dtsec_down_rover_like_static (e.g. 30)"
+	echo " #19: dtsec_down_rover_like_kin (e.g. 1)"
+	echo " #20: reclst_CPF_TOMION (e.g. albu_blck_cble_coff_echu_fors_gnoa_hill_invl_nrmn_rbvl_tmra_turo_ulla_weem, _ = NONE, ...)"   
+	echo " #21: reclst_CPF_MSTIDmodel (e.g. bank_crdx_cwn2_ftdn_mena_mgrv_pbot_spwd_unsw_vlwd_wfal, _ = NONE, ...)"	   
+	echo " #22: reclst_CPF_phaseamb_fixing (e.g. albu_blck_cble_coff_echu_fors_gnoa_hill_invl_nrmn_rbvl_turo_ulla_weem, _ = NONE, ...)"
+	echo " #23: reclst_rover_like_static (e.g. bath_ckwl_cwra_dksn_lgow_mudg_obrn_orng_prce_rgln_ryls_str1_tid1, - = NONE,...)"
+	echo " #24: reclst_rover_like_kin (e.g. airl_car0, _ = NONE, ...)"
+	echo " #25: external_sp3e_file (no/sp3e_file_including_path-example: ~/w/datasets/s3e.high_rate/clk_5s/clk_sp3_2_s3e.2008.139.cod.5sec.4cosmic/sp3e_clk.lst)"
+	echo " #26: precise_orbits_set (e.g. igs, igu, cod...)"
+	echo " #27: external_coordinates_file (n -IGS sinex- / h -RINEX header- / r -Very raw from GPS sat. in view- / file, e.g. ~/w/datasets/coordinates/permanent_receivers/xyz.tot.all)"  
+	echo " #28: dra_iono_grid (deg. e.g. 3 or -99)"  
+	echo " #29: dlat_iono_grid (deg. e.g. 2, or c.pri full path file if dra_iono_grid=-99, e.g. ~/dat/c.pri)"
+	echo " #30: lat0_iono_grid (deg., e.g. -60)"
+	echo " #31: lat1_iono_grid (deg. e.g. -5)"
+	echo " #32: ver_mi2pre_program (e.g. 2.1.1)"
+	echo " #33: ver_mi2pre_nml (e.g. CPF+User_v0)"
+	echo " #34: ver_pre2mo_program (e.g. 3.4.3)"
+	echo " #35: ver_pre2mo_nml (e.g. CPF+User_v0)"
+	echo " #36: second_run_to_remove_filter_postfit_outliers (y/n)"
+	echo " #37: typical_plot_behaviour (view/noview)"
+	echo " #38: nviews_min_per_sat_in_common_with_refrec (0, all, k, k>0); REMARK: only applicable when refrec != _ "
+        echo " #39: itropo_model (1/2/3)"
+	echo " #40: prefits_w_fixDDamb_from_prefits (y/n)"
+	echo " #41: prefits_w_fixDDamb_from_filter (y/n)"
+	echo " #42: max_number_iterations_to_fixDDamb_from_filter (e.g. 3)"
+	exit -1
+endif
+
+#setenv masteruser ionex4
+#setenv masteruser ionsat-tools-master
+setenv masteruser
+
+set bindir = ~$masteruser/bin
+set bindir_local = $bindir
+set bindir1 = ~$masteruser/w/bin
+set bindir2 = ~$masteruser/wrt/bin
+set datdir1 = ~$masteruser/w/dat
+set datasetsdir1 = ~$masteruser/w/datasets
+set templatesdir1 = ~$masteruser/w/templates
+set gps_sp3dir = ftp://cddis.gsfc.nasa.gov/gps/products
+#
+set extout = .after_removing_filter_postfit_outliers
+set extout2 = .after_fixDDamb_from_filter_run
+#
+# SINEX server (precise coordinates): base address for EUREF
+#
+set snxremotebdir_eur = ftp://ftp.epncb.oma.be/pub/product/combin
+#
+# SINEX server (precise coordinates): base address for CODE
+#
+set snxremotebdir_cod = ftp://cddis.gsfc.nasa.gov/gps/products
+#
+# SINEX server (precise coordinates): base address for JPL
+#
+set snxremotebdir_jpl = ftp://sideshow.jpl.nasa.gov/pub/jpligsac
+#
+set sinex1 = "UNKNOWN"
+set sinex2 = "UNKNOWN"
+set sinex3 = "UNKNOWN"
+#
+set otlfile=${datdir1}/otl
+#
+#set cycle_slip_double_check_rec_cent_preLc = y
+set cycle_slip_double_check_rec_cent_preLc = n
+#
+# For filtering the PR records in order to guarantee a minimum number of common views for each given satellite at each given time
+#
+########################set nviews_min_per_sat_in_common_with_refrec = 1
+#######################set nviews_min_per_sat_in_common_with_refrec = all
+#
+# For looking reference satellites when refrec is activated
+#
+set elemin_refsat = 20
+# Iono voxel centers and options... (in case any iono mode is selected, otherwise no effect)
+set nlayers=2
+set layerwidth_km=680
+set hboundary_bottom=110
+set hboundary_top=`echo $nlayers $hboundary_bottom $layerwidth_km | gawk '{print $1*$3+$2}'`
+
+set hm_layers = ( `echo $nlayers $layerwidth_km $hboundary_bottom | gawk '{for(i=1;i<=$1;i++){print $3+$2*(i-0.5)}}'` )
+echo $hm_layers
+# Basic element of ray, in km.
+set dray_iono = 10
+#
+set additional_obs_beyond_L1P1C1L2P2C2 = ""
+#
+set use_dd_prefits_mean_in_postprocessing = "y"
+#
+#############################################################
+# CYCLE-LIPp detection parameters for very FIRST SCREENING 
+# (during preprocessing BEFORE preparing messages1.input)
+#############################################################
+#
+# Maximum allowable STEC acceleration for Standard measurments
+# (deduced by finit differences from LI=L1-L2, in meters/second**2), 
+# before declaring an associated cycle-slip
+#
+#set dtsecmax_nocycleslip = 61.
+#set d2Limax0_nocycleslip = 0.10
+#set d2Limax_per_sec_nocycleslip = 0.002
+set dtsecmax_nocycleslip = 31.
+#set d2Limax0_nocycleslip = 0.05
+#set d2Limax_per_sec_nocycleslip = 0.001
+set d2Limax0_nocycleslip = 0.025
+set d2Limax_per_sec_nocycleslip = 0.0005
+#
+# Wide lane based cycle slip detection: maximum jump in Bw for Std. scenarios
+#
+#set dBwmax_nocycleslip = 50
+#set dBwmax_nocycleslip = 25
+set dBwmax_nocycleslip = 5
+#
+# (For Galileo data only) Maximum allowable jump in Lew-Pew / meters:
+#
+#set dBewmax_nocycleslip=50
+set dBewmax_nocycleslip=25
+#
+# (For Galileo data only) Maximum allowable jump in Lew - Lw / meters:
+#
+#set dlew_wmax_nocycleslip=5
+set dlew_wmax_nocycleslip=2.5
+#
+set integer_phase_ambiguity_alignement="y"
+#
+#############################################################
+# CYCLE-SLIP detection parameters for SECOND SCREENING
+# (AFTER preparing messages1.input, during prefits generation)
+#############################################################
+#
+set d2Li_max_0=0.10
+set d2Li_max_exp_ct_m_per_sec=90.00003
+set d2Li_max_exp_amp_m_per_sec=90.012
+set d2Li_max_exp_scale_deg=55.
+set dBw_max_exp_ct_m=91.1
+set dBw_max_exp_amp_m=98.
+set dBw_max_exp_scale_deg=20
+#
+#
+set bi_bw_bc_link = "n"
+#
+set iexpected_dtsec_sp3cfile = 900
+#
+set external_sflux_if_positive = -999
+#
+# iono_background_model(i/n for IRI, NeQuick and None respetively, in case model_apriori_iono = .TRUE.) 
+set iono_background_model = n
+#set iono_background_model = i
+if ( $iono_background_model == "i" ) then
+	set basedir_auxdata_apriori_iono = iri
+else
+	if ( $iono_background_model == "n" ) then
+		set basedir_auxdata_apriori_iono = nequick
+	else
+		echo "ERROR: iono_background_model!= i && iono_background_model!= n"
+		exit -1
+	endif
+endif
+
+set gpsconsstatusfile=${datdir1}/gpsconsstatus.lst
+
+# For comparison with GIM STEC
+set GIMid = uqrg
+set upload_to_local_ftp = n
+#elemin_DCBs(e.g. 25)
+set elemin_for_bi = 25
+#sigma_bi_max_m_of_LI(e.g. 0.2)
+set sigma_bi_max_m_of_LI = 0.2
+#nobsmin_DCBs
+set nobsmin_arch_for_bi = 30
+#
+set quantum_dl = 1
+
+#############################################################
+# Threshold for outlier removal in the filter
+#############################################################
+#set pofres_Pc_max = 5.
+set pofres_Pc_max = 10.
+set pofres_Lc_max = 0.05
+#set pofres_Lc_max = 0.04
+#set pofres_Lc_max = 0.03
+#set pofres_Lc_max = 0.02
+set pofres_Pi_max = 15.
+#set pofres_Li_max = 0.075
+set pofres_Li_max = 0.1
+set pofres_MW_max = 3.
+
+#############################################################
+# Parameters for filtering, interpolating STEC from obs. and ambiguities
+#############################################################
+set stdev_stec_dfobs_max = 0.2
+
+
+set run_ID_extension = $1
+set source_of_measurements = $2
+set messages_input_file = $3
+set run_level_start = $4
+set run_level_end = $5
+echo $run_level_start $run_level_end
+#exit
+set year0 = $6
+set doy0 = $7
+set hh0 = $8
+set year1 = $9
+set doy1 = $10
+set hh1 = $11
+
+set refrec = $12
+set elemin_refsat = $13
+set localrep_RINEX = $14
+set dtsec_initial_RINEX = $15
+set dtsec_down_CPF_TOMION = $16
+set dtsec_down_CPF_MSTIDmodel = $17
+set dtsec_down_rover_like_static = $18
+set dtsec_down_rover_like_kin = $19
+
+set reclst_CPF_TOMION = `echo $20 | sed 's/_/ /g'`
+set reclst_CPF_MSTIDmodel = `echo $21 | sed 's/_/ /g'`
+set reclst_CPF_phaseamb_fixing = `echo $22 | sed 's/_/ /g'`
+set reclst_rover_like_static = `echo $23 | sed 's/_/ /g'`
+set reclst_rover_like_kin = `echo $24 | sed 's/_/ /g'`
+
+set n_reclst_CPF_TOMION = `echo $20 | sed 's/_/ /g' | wc -w`
+set n_reclst_CPF_MSTIDmodel = `echo $21 | sed 's/_/ /g' | wc -w`
+set n_reclst_CPF_phaseamb_fixing = `echo $22 | sed 's/_/ /g' | wc -w`
+set n_reclst_rover_like_static = `echo $23 | sed 's/_/ /g' | wc -w`
+set n_reclst_rover_like_kin = `echo $24 | sed 's/_/ /g' | wc -w`
+
+set external_sp3e_file = $25
+set precise_orbits_set = $26
+set external_coordinates_file = $27
+
+set dra_iono_grid = $28
+set dlat_iono_grid = $29
+set lat0_iono_grid = $30
+set lat1_iono_grid = $31
+
+set ver_mi2pre_program = $32
+set ver_mi2pre_nml = $33
+set ver_pre2mo_program = $34
+set ver_pre2mo_nml = $35
+
+set second_run_to_remove_filter_postfit_outliers = $36
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+	set extout1 = $extout
+else
+	set extout1 = ""
+endif
+echo
+echo "extout= "$extout" extout1= "$extout1
+echo
+
+set typical_plot_behaviour = $37
+set view_yn = `echo $typical_plot_behaviour | gawk '{if($1=="view"){print "y"}else{print "n"}}'`
+
+set nviews_min_per_sat_in_common_with_refrec = $38
+
+set itropo_model = $39
+
+echo $itropo_model
+if ( ( $itropo_model != 1 ) && ( $itropo_model != 2 ) && ( $itropo_model != 3 ) && ( $itropo_model != 4 ) ) then
+        echo "ERROR: unsupported itropo_model = "$itropo_model
+        exit -1
+endif
+
+set prefits_w_fixDDamb_from_prefits = $40
+
+set prefits_w_fixDDamb_from_filter = $41
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+	set extout1 = $extout2
+endif
+
+set max_number_iterations_to_fixDDamb_from_filter = $42
+
+set mi2pre_program = messages1input_2_prefits_v${ver_mi2pre_program}
+set mi2pre_nml=${templatesdir1}/$mi2pre_program.${ver_mi2pre_nml}.nml
+set pre2mo_program=prefits_2_messages1output_v${ver_pre2mo_program}
+set pre2mo_nml=${templatesdir1}/$pre2mo_program.${ver_pre2mo_nml}.nml
+
+set doy0f = `echo $doy0 | gawk '{printf "%03d",$1}'`
+set doy1f = `echo $doy1 | gawk '{printf "%03d",$1}'`
+set hh0f = `echo $hh0 | gawk '{printf "%03d",$1}'`
+set hh1f = `echo $hh1 | gawk '{printf "%03d",$1}'`
+
+set yy0 = `echo $year0 | gawk '{print substr($1,3,2)}'`
+set yy1 = `echo $year1 | gawk '{print substr($1,3,2)}'`
+set djm0 =  `echo $yy0 $doy0 0 | ${bindir}/yydoyut2djm | gawk '{print int($1+.001)}'`
+set djm1 =  `echo $yy1 $doy1 0 | ${bindir}/yydoyut2djm | gawk '{print int($1+.001)}'`
+echo
+echo $yy0 $doy0 $djm0 $yy1 $doy1 $djm1
+
+set month0 = `echo $djm0 | ${bindir1}/djm2cal | gawk '{print $2}'`
+set day0 = `echo $djm0 | ${bindir1}/djm2cal | gawk '{print $3}'`
+set gpsweek0 = `${bindir1}/doy2gpsws_v0predir.scr $year0 $doy0 ~$masteruser | gawk '{printf "%04d",$1}'`
+
+set hh0 = 0
+set mm0 = 0
+set ss0 = 0
+
+#
+#echo "PROV.EXIT"
+#exit -1
+
+###############
+
+set pwd0 = $PWD
+set ver = `echo $0 | gawk -F"." '{print $(NF-1)}'`
+echo $ver
+#
+#echo "ESTOY AQUI"
+#echo "PROV.EXIT"
+#exit -1
+#set wkdir0 = iagpGNSSm.$ver.${run_ID_extension}.$year0$doy0f$hh0f"-"$year1$doy1f$hh1f"."$refrec"."${elemin_refsat}"."${dtsec_initial_RINEX}.${dtsec_down_CPF_TOMION}.${dtsec_down_CPF_MSTIDmodel}.${dtsec_down_rover_like_static}.${dtsec_down_rover_like_kin}"_"nrT${n_reclst_CPF_TOMION}.nrM${n_reclst_CPF_MSTIDmodel}.${precise_orbits_set}.nra${n_reclst_CPF_phaseamb_fixing}.nrrs${n_reclst_rover_like_static}.nrrk${n_reclst_rover_like_kin}_${nviews_min_per_sat_in_common_with_refrec}_itropo${itropo_model}_fixDDpre-${prefits_w_fixDDamb_from_prefits}_fixDDfil-${prefits_w_fixDDamb_from_filter}_mi2p${ver_mi2pre_program}.${ver_mi2pre_nml}_p2mo${ver_pre2mo_program}.${ver_pre2mo_nml}
+set wkdir0 = iagpGNSSm.$ver.${run_ID_extension}.${source_of_measurements}.$year0$doy0f$hh0f"-"$year1$doy1f$hh1f"."$refrec"."${elemin_refsat}"."${dtsec_initial_RINEX}.${dtsec_down_CPF_TOMION}.${dtsec_down_CPF_MSTIDmodel}.${dtsec_down_rover_like_static}.${dtsec_down_rover_like_kin}"_"nrT${n_reclst_CPF_TOMION}.nrM${n_reclst_CPF_MSTIDmodel}.${precise_orbits_set}.nra${n_reclst_CPF_phaseamb_fixing}.nrrs${n_reclst_rover_like_static}.nrrk${n_reclst_rover_like_kin}_${nviews_min_per_sat_in_common_with_refrec}_itropo${itropo_model}_fixDDpre-${prefits_w_fixDDamb_from_prefits}_fixDDfil-${prefits_w_fixDDamb_from_filter}_mi2p${ver_mi2pre_program}.${ver_mi2pre_nml}_p2mo${ver_pre2mo_program}.${ver_pre2mo_nml}
+
+echo
+echo $wkdir0
+
+set wkdir = ${pwd0}/${wkdir0}
+set xyz_from_rinex_headers_file = ${run_ID_extension}.${source_of_measurements}.$year0$doy0f$hh0f"-"$year1$doy1f$hh1f".from_rinex_header."xyz
+echo $xyz_from_rinex_headers_file
+set xyz_very_raw_from_GPS_sat_in_view = ${run_ID_extension}.${source_of_measurements}.$year0$doy0f$hh0f"-"$year1$doy1f$hh1f".very_raw_from_GPS_sat_in_view."xyz
+echo $xyz_very_raw_from_GPS_sat_in_view
+#echo "PROV.EXIT"
+#exit -1
+echo
+echo "WKDIR= "$wkdir
+
+#mkdir -p $wkdir
+mkdir -p ${wkdir0}
+cd $wkdir
+
+#echo "PROV.EXIT"
+#exit -1
+
+echo $20 | sed 's/_/\n/g' | gawk '{if(NF>0)print $0}' > reclst_CPF_TOMION.sta
+wc -l ${PWD}/reclst_CPF_TOMION.sta
+echo $21 | sed 's/_/\n/g' | gawk '{if(NF>0)print $0}' > reclst_CPF_MSTIDmodel.sta
+wc -l ${PWD}/reclst_CPF_MSTIDmodel.sta
+echo $22 | sed 's/_/\n/g' | gawk '{if(NF>0)print $0}' > reclst_CPF_phaseamb_fixing.sta
+wc -l ${PWD}/reclst_CPF_phaseamb_fixing.sta
+echo $23 | sed 's/_/\n/g' | gawk '{if(NF>0)print $0}' > reclst_rover_like_static.sta
+wc -l ${PWD}/reclst_rover_like_static.sta
+echo $24 | sed 's/_/\n/g' | gawk '{if(NF>0)print $0}' > reclst_rover_like_kin.sta
+wc -l ${PWD}/reclst_rover_like_kin.sta
+
+#echo $refrec > refrec.sta
+if ($refrec == "_") then
+	echo "WARNING: No reference receiver"
+	rm -rf refrec.sta
+	touch refrec.sta
+else
+	echo $refrec > refrec.sta
+endif
+wc -l ${PWD}/refrec.sta
+
+cat reclst_CPF_TOMION.sta reclst_CPF_MSTIDmodel.sta reclst_CPF_phaseamb_fixing.sta reclst_rover_like_static.sta reclst_rover_like_kin.sta | sort -u > rec_ALL.sta
+wc -l rec_ALL.sta
+
+set reclst_ALL = `paste -s rec_ALL.sta`
+
+if ( $dtsec_initial_RINEX == 30 ) then
+	set id_dtsec_initial_RINEX = 30s
+else
+	if ( $dtsec_initial_RINEX == 1 ) then
+		set id_dtsec_initial_RINEX = 1Hz
+	else
+		echo
+		echo "ERROR: dtsec_initial_RINEX != 1,30"
+		exit -1
+	endif
+endif
+
+#echo "PROV.EXIT"
+#exit -1
+
+echo "Starting at run level "$run_level_start
+goto $run_level_start
+
+#echo "PROV.EXIT"
+#exit -1
+
+dummy_start:
+echo
+echo "============================="
+echo
+echo " 0. Dummy start"
+echo
+echo "============================="
+
+if( $run_level_end == "dummy_start")then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+gathering_rinex_files:
+if ( $source_of_measurements != "messages_input" ) then
+	echo
+	echo "============================="
+	echo
+	echo " 1. Gathering RINEX files"
+	echo
+	echo "============================="
+	
+	mkdir -p ${wkdir}/rinex_files/org
+	cd ${wkdir}/rinex_files/org
+	
+	set djm = $djm0 
+	
+	while ( $djm <= $djm1 )
+	
+		set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+		set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+	
+		set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+		set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	
+		foreach rec ( $reclst_CPF_TOMION )
+		
+			set hatafile = ${rec}${doyf}0.${yy}d.Z
+			echo $djm $year $doy $rec $hatafile
+			#${bindir1}/wget_gps_data.v17d.scr $year $doy rinex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $rec
+			${bindir1}/wget_gps_data.scr $year $doy rinex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $rec
+	
+			if ( -f $hatafile ) then
+				echo $dtsec_down_CPF_TOMION
+				#zcat $hatafile | ${bindir}/crx2rnx | ${bindir}/teqc -O.obs 'L1L2P1P2C1' -O.dec $dtsec_down_CPF_TOMION -O.int $dtsec_down_CPF_TOMION | ${bindir}/rnx2crx | compress > ../$hatafile
+				zcat $hatafile | ${bindir}/crx2rnx | ${bindir}/teqc -n_GLONASS 32 -O.obs 'L1L2P1P2C1' -O.dec $dtsec_down_CPF_TOMION -O.int $dtsec_down_CPF_TOMION | ${bindir}/rnx2crx | compress > ../$hatafile
+				ls -l ../$hatafile
+			endif
+	
+			#echo "PROV.EXIT"
+			#exit -1
+	
+		end
+	
+		foreach rec ( $reclst_CPF_MSTIDmodel )
+	
+			set hatafile = ${rec}${doyf}0.${yy}d.Z
+			echo $djm $year $doy $rec $hatafile
+			#${bindir1}/wget_gps_data.v17d.scr $year $doy rinex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $rec
+			${bindir1}/wget_gps_data.scr $year $doy rinex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $rec
+	
+			if ( -f $hatafile ) then
+				echo $dtsec_down_CPF_MSTIDmodel
+				#zcat $hatafile | ${bindir}/crx2rnx | ${bindir}/teqc -O.obs 'L1L2P1P2C1' -O.dec $dtsec_down_CPF_MSTIDmodel -O.int $dtsec_down_CPF_MSTIDmodel | ${bindir}/rnx2crx | compress > ../$hatafile
+				zcat $hatafile | ${bindir}/crx2rnx | ${bindir}/teqc -n_GLONASS 32 -O.obs 'L1L2P1P2C1' -O.dec $dtsec_down_CPF_MSTIDmodel -O.int $dtsec_down_CPF_MSTIDmodel | ${bindir}/rnx2crx | compress > ../$hatafile
+				ls -l ../$hatafile
+			endif
+	
+			#echo "PROV.EXIT"
+			#exit -1
+		end
+	
+		foreach rec ( $reclst_rover_like_static )
+	
+			set hatafile = ${rec}${doyf}0.${yy}d.Z
+			echo $djm $year $doy $rec $hatafile
+			#${bindir1}/wget_gps_data.v17d.scr $year $doy rinex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $rec
+			${bindir1}/wget_gps_data.scr $year $doy rinex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $rec
+	
+			if ( -f $hatafile ) then
+				echo $dtsec_down_rover_like_static
+				#zcat $hatafile | ${bindir}/crx2rnx | ${bindir}/teqc -O.obs 'L1L2P1P2C1' -O.dec $dtsec_down_rover_like_static -O.int $dtsec_down_rover_like_static | ${bindir}/rnx2crx | compress > ../$hatafile
+				zcat $hatafile | ${bindir}/crx2rnx | ${bindir}/teqc -n_GLONASS 32 -O.obs 'L1L2P1P2C1' -O.dec $dtsec_down_rover_like_static -O.int $dtsec_down_rover_like_static | ${bindir}/rnx2crx | compress > ../$hatafile
+				ls -l ../$hatafile
+			endif
+	
+			#echo "PROV.EXIT"
+			#exit -1
+		end
+	
+		foreach rec ( $reclst_rover_like_kin )
+	
+			set hatafile = ${rec}${doyf}0.${yy}d.Z
+			echo $djm $year $doy $rec $hatafile
+			#${bindir1}/wget_gps_data.v17d.scr $year $doy rinex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $rec
+			${bindir1}/wget_gps_data.scr $year $doy rinex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $rec
+	
+			if ( -f $hatafile ) then
+				echo $dtsec_down_rover_like_kin
+				#zcat $hatafile | ${bindir}/crx2rnx | ${bindir}/teqc -O.obs 'L1L2P1P2C1' -O.dec $dtsec_down_rover_like_kin -O.int $dtsec_down_rover_like_kin | ${bindir}/rnx2crx | compress > ../$hatafile
+				zcat $hatafile | ${bindir}/crx2rnx | ${bindir}/teqc -n_GLONASS 32 -O.obs 'L1L2P1P2C1' -O.dec $dtsec_down_rover_like_kin -O.int $dtsec_down_rover_like_kin | ${bindir}/rnx2crx | compress > ../$hatafile
+				ls -l ../$hatafile
+			endif
+	
+			#echo "PROV.EXIT"
+			#exit -1
+		end
+	
+		@ djm ++
+	
+	end
+
+#Extracting coordinates from the RINEX file header
+	rm -f temp.tot temp2.tot
+	#${bindir}/rnx2tot.v3.scr	
+	${bindir}/rnx2tot.v3c.scr	
+	if ( -f temp.tot && ! ( -z temp.tot ) ) then
+		gawk '{r[$1]=$0}END{for(rec in r){print r[rec]}}' temp.tot | sort > temp2.tot
+
+		cat temp2.tot |	gawk -f ${bindir1}/tot_2_xyz.awk -v yex=$yy0 -v mox=$month0 -v dax=$day0 -v hox=0 -v mix=0 -v sex=0 > $xyz_from_rinex_headers_file
+		wc -l $xyz_from_rinex_headers_file
+	else
+		echo 
+		echo "WARNING: No available coordinates from the headers of the RINEX files (if any)"
+		echo
+	endif
+
+#Estimating very raw coordinates from the centroid of the first GPS satellites in view placed on the Earth surface
+
+	rm -f $xyz_very_raw_from_GPS_sat_in_view
+	foreach hfile ( ????[0-3][0-9][0-9]0.[0-9][0-9]d.Z )
+		echo $hfile
+		set rinexfile1 = `echo $hfile | sed 's/d.Z$/o/g'`
+		echo $rinexfile1
+		${bindir1}/rnx2very-raw-initial-xyz.scr $hfile
+		wc -l $rinexfile1.very_raw_from_GPS_satellites_in_view.xyz
+		head -n 1 $rinexfile1.very_raw_from_GPS_satellites_in_view.xyz >> $xyz_very_raw_from_GPS_sat_in_view
+	end
+	wc -l $xyz_very_raw_from_GPS_sat_in_view
+
+else
+	echo 
+	echo "gathering_rinex_files skipped (source_of_measurements = messages_input)"
+endif
+
+if ($run_level_end == "gathering_rinex_files") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+gathering_orbits_clocks:
+echo
+echo "============================="
+echo 
+echo '2. Gathering precise IGS orbit and clocks file'
+echo 
+echo "============================="
+
+mkdir -p ${wkdir}/orbits_clocks
+cd ${wkdir}/orbits_clocks
+
+#
+#rm -f sp3c.lst
+if ( ! ( -f sp3e.lst ) || ( -z sp3e.lst ) ) then
+
+	mkdir -p ${wkdir}/orbits_clocks/org
+	cd ${wkdir}/orbits_clocks/org
+
+	if ( `echo $external_sp3e_file | gawk '{print tolower($1)}'` == "no" ||  `echo $external_sp3e_file | gawk '{print tolower($1)}'` == "n" ) then
+
+		echo
+		echo "djm0,djm1 = "$djm0" "$djm1
+		echo
+		set djm = $djm0 
+		
+		while ( $djm <= $djm1 )
+		
+			set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+			set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+		
+			set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+			set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	
+			set month = `echo $djm | ${bindir1}/djm2cal | gawk '{print $2}'`
+			set day = `echo $djm | ${bindir1}/djm2cal | gawk '{print $3}'`
+			set gpsweek = `${bindir1}/doy2gpsws_v0predir.scr $year $doy ~$masteruser | gawk '{printf "%04d",$1}'`
+			set gpssec = `${bindir1}/doy2gpsws_v0predir.scr $year $doy ~$masteruser | gawk '{print $2}'`
+			set gpsday = `echo $gpsweek $gpssec | gawk '{print int($1*7+($2+.5)/86400)}'`
+			set dow = `echo $gpsday | gawk '{print $1%7}'`
+			echo
+			echo
+			echo "Given day time info: "
+			echo $djm $year $yy $month $day $doy
+			echo $gpsweek $gpssec $gpsday $dow
+	
+			set djm_previousday = `echo $djm | gawk '{print $1-1}'`
+			set year_previousday = `echo $djm_previousday | ${bindir1}/djm2cal | gawk '{print $1}'`
+			set yy_previousday = `echo $year_previousday | gawk '{print substr($1,3,2)}'`
+			set month_previousday = `echo $djm_previousday | ${bindir1}/djm2cal | gawk '{print $2}'`
+			set day_previousday = `echo $djm_previousday | ${bindir1}/djm2cal | gawk '{print $3}'`
+			set doy_previousday = `echo  $year_previousday $month_previousday $day_previousday | ${bindir1}/cal2doy2`
+			set gpsweek_previousday = `${bindir1}/doy2gpsws_v0predir.scr $year_previousday $doy_previousday ~$masteruser | gawk '{printf "%04d",$1}'`
+			set gpssec_previousday = `${bindir1}/doy2gpsws_v0predir.scr $year_previousday $doy_previousday ~$masteruser | gawk '{print $2}'`
+			set gpsday_previousday = `echo $gpsweek_previousday $gpssec_previousday | gawk '{print int($1*7+($2+.5)/86400)}'`
+			set dow_previousday = `echo $gpsday_previousday | gawk '{print $1%7}'`
+			echo
+			echo "Previous day time info: "
+			echo $djm_previousday $year_previousday $yy_previousday $month_previousday $day_previousday $doy_previousday
+			echo $gpsweek_previousday $gpssec_previousday $gpsday_previousday $dow_previousday
+	
+			set djm_nextday = `echo $djm | gawk '{print $1+1}'`
+			set year_nextday = `echo $djm_nextday | ${bindir1}/djm2cal | gawk '{print $1}'`
+			set yy_nextday = `echo $year_nextday | gawk '{print substr($1,3,2)}'`
+			set month_nextday = `echo $djm_nextday | ${bindir1}/djm2cal | gawk '{print $2}'`
+			set day_nextday = `echo $djm_nextday | ${bindir1}/djm2cal | gawk '{print $3}'`
+			set doy_nextday = `echo  $year_nextday $month_nextday $day_nextday | ${bindir1}/cal2doy2`
+			set gpsweek_nextday = `${bindir1}/doy2gpsws_v0predir.scr $year_nextday $doy_nextday ~$masteruser | gawk '{printf "%04d",$1}'`
+			set gpssec_nextday = `${bindir1}/doy2gpsws_v0predir.scr $year_nextday $doy_nextday ~$masteruser | gawk '{print $2}'`
+			set gpsday_nextday = `echo $gpsweek_nextday $gpssec_nextday | gawk '{print int($1*7+($2+.5)/86400)}'`
+			set dow_nextday = `echo $gpsday_nextday | gawk '{print $1%7}'`
+			echo
+			echo "Next day time info: "
+			echo $djm_nextday $year_nextday $yy_nextday $month_nextday $day_nextday $doy_nextday
+			echo $gpsweek_nextday $gpssec_nextday $gpsday_nextday $dow_nextday
+
+		#echo "PROV.EXIT"
+		#exit -1
+
+			if ( ${precise_orbits_set} == "igu" ) then
+
+				echo " "
+				echo "WARNING: Precise predicted (ultrarapid) IGS orbits selected"
+				echo " Proceeding to merging 6-hours intervals emulating real-time conditions"
+				echo " "
+
+				rm -f sp3c.lst
+				${bindir1}/real-time_like_igu_sp3file_per_day.v3.scr $gpsweek_previousday $dow_previousday $yy_previousday $month_previousday $day_previousday $gps_sp3dir $bindir1
+				mv  sp3c.lst sp3c_previousday.lst
+				${bindir1}/real-time_like_igu_sp3file_per_day.v3.scr $gpsweek_nextday $dow_nextday $yy_nextday $month_nextday $day_nextday $gps_sp3dir $bindir1
+				mv sp3c.lst sp3c_nextday.lst
+				${bindir1}/real-time_like_igu_sp3file_per_day.v3.scr $gpsweek $dow $yy $month $day $gps_sp3dir $bindir1
+
+				#cat sp3c_previousday.lst sp3c.lst sp3c_nextday.lst | gawk -f ${bindir1}/s3c-records_to_s3e-records.awk | tee sp3e.all_dup_unsort.lst | gawk '{ii=$2"_"$3"_"$4"_"$5"_"$6"_"$7"_"$8;r[ii]=$0}END{for(ii in r){print r[ii]}}' | sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 > sp3e.lst.$djm
+				cat sp3c_previousday.lst sp3c.lst sp3c_nextday.lst | gawk -f ${bindir1}/s3c-records_to_s3e-records.awk | tee sp3e.all_dup_unsort.lst | gawk 'BEGIN{hpmin=18;hnmax=6;yp=+"'$yy_previousday'";mp=+"'$month_previousday'";dp=+"'$day_previousday'";yn=+"'$yy_nextday'";mn=+"'$month_nextday'";dn=+"'$day_nextday'";y0=+"'$yy'";m0=+"'$month'";d0=+"'$day'";idn=yn"_"mn"_"dn;idp=yp"_"mp"_"dp;id0=y0"_"m0"_"d0;}{y=+$3;m=+$4;d=+$5;h=+$6;id=y"_"m"_"d;if((id==idp && h > hpmin) || id==id0 || (id==idn && h< hnmax)){ii=$2"_"$3"_"$4"_"$5"_"$6"_"$7"_"$8;r[ii]=$0}}END{for(ii in r){print r[ii]}}' | sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 > sp3e.lst.$djm
+				ls -l sp3e.lst.$djm
+
+			else
+
+				set sp3gps_file=${precise_orbits_set}${gpsweek}${dow}
+				set sp3gps_file_previousday=${precise_orbits_set}${gpsweek_previousday}${dow_previousday}
+				set sp3gps_file_nextday=${precise_orbits_set}${gpsweek_nextday}${dow_nextday}
+				echo $sp3gps_file
+	
+#				if ( ! ( -f $sp3gps_file.sp3.Z ) ) then
+				if ( ! ( -f $sp3gps_file.sp3.Z && -f $sp3gps_file_previousday.sp3.Z && -f $sp3gps_file_nextday.sp3.Z ) ) then
+	
+					if ( -f ${datasetsdir1}/sp3/$sp3gps_file.sp3.Z  && -f ${datasetsdir1}/sp3/$sp3gps_file_previousday.sp3.Z && -f ${datasetsdir1}/sp3/$sp3gps_file_nextday.sp3.Z) then
+	
+						cp ${datasetsdir1}/sp3/$sp3gps_file.sp3.Z .
+						cp ${datasetsdir1}/sp3/$sp3gps_file_previousday.sp3.Z .
+						cp ${datasetsdir1}/sp3/$sp3gps_file_nextday.sp3.Z .
+					else
+	
+						if ( $precise_orbits_set == "cod" ) then
+							wget ${gps_sp3dir}/${gpsweek}/${sp3gps_file}.eph.Z
+							cp ${sp3gps_file}.eph.Z ${sp3gps_file}.sp3.Z
+	
+							wget ${gps_sp3dir}/${gpsweek_previousday}/${sp3gps_file_previousday}.eph.Z
+							cp ${sp3gps_file_previousday}.eph.Z ${sp3gps_file_previousday}.sp3.Z
+							wget ${gps_sp3dir}/${gpsweek_nextday}/${sp3gps_file_nextday}.eph.Z
+							cp ${sp3gps_file_nextday}.eph.Z ${sp3gps_file_nextday}.sp3.Z
+						else
+							wget ${gps_sp3dir}/${gpsweek}/${sp3gps_file}.sp3.Z
+							wget ${gps_sp3dir}/${gpsweek_previousday}/${sp3gps_file_previousday}.sp3.Z
+							wget ${gps_sp3dir}/${gpsweek_nextday}/${sp3gps_file_nextday}.sp3.Z
+						endif
+						if ( -f ${sp3gps_file}.sp3.Z ) then
+							echo Saving ${sp3gps_file}.sp3.Z to ${datasetsdir1}/sp3
+							cp ${sp3gps_file}.sp3.Z ${datasetsdir1}/sp3
+						else
+							echo "ERROR: Non available precise IGS orbit file "${sp3gps_file}.sp3.Z" from "${gps_sp3dir}
+						endif
+					endif
+				endif
+				ls -l ${sp3gps_file}.sp3.Z
+	
+				zcat ${sp3gps_file_previousday}.sp3.Z | gawk -f ${bindir1}/sp3c_to_s3e-records.awk | sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 > sp3e_previousday.lst
+				zcat ${sp3gps_file_nextday}.sp3.Z | gawk -f ${bindir1}/sp3c_to_s3e-records.awk | sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 > sp3e_nextday.lst
+				zcat ${sp3gps_file}.sp3.Z | gawk -f ${bindir1}/sp3c_to_s3e-records.awk  | sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 > sp3e_thisday.lst
+				cat sp3e_previousday.lst sp3e_thisday.lst sp3e_nextday.lst > sp3e.lst.$djm
+				echo
+				ls -l sp3e.lst.$djm
+	
+			endif
+
+			@ djm ++
+
+		end
+	
+	else
+	
+		echo "Gathering sp3e.lst file from "$external_sp3e_file"..."
+		echo "Selecting only those with sat.clock.errors (last field) < "$max_sat_clock_error_external_sp3e_file
+		gawk 'BEGIN{sctx_max=+"'$max_sat_clock_error_external_sp3e_file'"}{if($18<sctx_max)print  $0}' $external_sp3e_file > ../sp3e.lst
+
+	endif
+
+
+else
+
+	echo " "
+	echo "WARNING: using existing sp3e.lst file"
+
+endif
+
+#ls -l sp3c.lst
+echo
+ls -l sp3e.lst.[0-9][0-9][0-9][0-9][0-9]
+#gawk '{ii=$1"_"$2"_"$3"_"$4"_"$5"_"$6"_"$7"_"$8;r[ii]=$0}END{for(ii in r){print r[ii]}}' sp3e.lst.[0-9][0-9][0-9][0-9][0-9] | sort -k 3,8 > ../sp3e.lst
+gawk '{ii=$1"_"$2"_"$3"_"$4"_"$5"_"$6"_"$7"_"$8;r[ii]=$0}END{for(ii in r){print r[ii]}}' sp3e.lst.[0-9][0-9][0-9][0-9][0-9] | sort -gk3,3 -gk4,4 -gk5,5 -gk6,6 -gk7,7 -gk8,8 > ../sp3e.lst
+echo
+ls -l ../sp3e.lst
+
+#echo "PROVISIONAL EXIT"
+#exit -1
+
+if ($run_level_end == "gathering_orbits_clocks") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit 
+endif
+
+gathering_apriori_rec_coordinates:
+echo
+echo "============================="
+echo 
+echo '3. Gathering apriori receiver coordinates'
+echo 
+echo "============================="
+
+mkdir -p ${wkdir}/apriori_rec_coordinates/org
+cd ${wkdir}/apriori_rec_coordinates/org
+
+if ( source_of_measurements == "messages_input" ) then
+
+#ESTOY AQUI	
+
+else
+
+	if ( $external_coordinates_file != "n" ) then
+		echo " "
+		if ( $external_coordinates_file == "h" ) then
+			echo " Taking receiver coordinates from the header of the RINEX files: "
+			ln -s ../../rinex_files/org/$xyz_from_rinex_headers_file .
+			cp $xyz_from_rinex_headers_file ../xyz.tot
+			ls -l ../xyz.tot
+			wc -l ../xyz.tot
+		else
+			if ( $external_coordinates_file == "r" ) then
+				echo " Taking very raw receiver coordinates from the GPS satellites in view: "
+				ln -s ../../rinex_files/org/$xyz_very_raw_from_GPS_sat_in_view .
+				cp $xyz_very_raw_from_GPS_sat_in_view ../xyz.tot
+				ls -l ../xyz.tot
+				wc -l ../xyz.tot
+
+			else
+
+				if ( -f $external_coordinates_file && ! ( -z  $external_coordinates_file ) ) then
+					echo " Taking external file for receiver coordinates: "
+					echo $external_coordinates_file
+					cp -p $external_coordinates_file ../xyz.tot
+					ls -l ../xyz.tot
+					wc -l ../xyz.tot
+				else
+					echo " External file for receiver coordinates "
+					echo $external_coordinates_file
+					echo " does not contain data"
+				endif
+			endif
+		endif
+	endif
+
+endif
+	
+
+if ( ! ( -f ../xyz.tot ) || ( -z ../xyz.tot ) ) then
+
+	echo " "
+	echo " Looking for accurate coordinates in the Net..."
+
+	set sinex1=EUR${gpsweek0}7.SNX.Z
+	if ( ! ( -f $sinex1 ) ) then
+		if ( -f ${datasetsdir1}/sinex/$sinex1 ) then
+			echo " "
+			echo "WARNING: Copying "$sinex1" from "${datasetsdir1}"/sinex/"$sinex1
+			cp ${datasetsdir1}/sinex/$sinex1 .
+		else
+			wget ${snxremotebdir_eur}/${gpsweek0}/$sinex1
+
+			if ( ! ( -f $sinex1 ) ) then
+				echo " "
+				echo "WARNING: Non available SINEX file "$sinex1
+			else
+				cp $sinex1 ${datasetsdir1}/sinex
+				echo " "	
+				echo "Storing "$sinex1" in "${datasetsdir1}"/sinex"
+			endif
+		endif
+	endif
+
+	ls -l $sinex1
+
+#	set sinex2=cod${gpsweek0}7.snx.Z
+	#set sinex2=jpl${gpsweek0}7.snx.Z
+#	set sinex2=cod${gpsweek0}3.snx.Z
+	set gpsweek00 = `echo $gpsweek0 | gawk '{print $1-6}'`
+	set gpsweek1 = $gpsweek0
+	while ( $gpsweek1 >= $gpsweek00 ) 
+		echo
+		echo "gpsweek1 = "$gpsweek1
+		set sinex2=cod${gpsweek1}0.snx.Z
+		if ( ! ( -f $sinex2 ) ) then
+			if ( -f ${datasetsdir1}/sinex/$sinex2 ) then
+				echo " "
+				echo "WARNING: Copying "$sinex2" from "${datasetsdir1}"/sinex/"$sinex2
+				cp ${datasetsdir1}/sinex/$sinex2 .
+				goto next_topic
+			else
+				#wget ${snxremotebdir_cod}/${gpsweek0}/$sinex2
+				wget ${snxremotebdir_cod}/${gpsweek1}/$sinex2
+	
+				if ( ! ( -f $sinex2 ) ) then
+					echo " "
+					echo "WARNING: Non available SINEX file "$sinex2
+				else
+					cp $sinex2 ${datasetsdir1}/sinex
+					echo " "
+					echo "Storing "$sinex2" in "${datasetsdir1}"/sinex"
+					goto next_topic
+				endif
+			endif
+		endif
+		ls -l $sinex2
+		@ gpsweek1 --
+	end
+
+        set gpsweek00 = `echo $gpsweek0 | gawk '{print $1-6}'`
+        set gpsweek1 = $gpsweek0
+        while ( $gpsweek1 >= $gpsweek00 )
+                echo
+                echo "gpsweek1 = "$gpsweek1
+                set sinex3=jpl${gpsweek1}0.snx.Z
+                if ( ! ( -f $sinex3 ) ) then
+                        if ( -f ${datasetsdir1}/sinex/$sinex3 ) then
+                                echo " "
+                                echo "WARNING: Copying "$sinex3" from "${datasetsdir1}"/sinex/"$sinex3
+                                cp ${datasetsdir1}/sinex/$sinex3 .
+                                goto next_topic
+                        else
+                                #wget ${snxremotebdir_cod}/${gpsweek0}/$sinex2
+                                wget ${snxremotebdir_jpl}/${gpsweek1}/$sinex3
+
+                                if ( ! ( -f $sinex3 ) ) then
+                                        echo " "
+                                        echo "WARNING: Non available SINEX file "$sinex3
+                                else
+                                        cp $sinex3 ${datasetsdir1}/sinex
+                                        echo " "
+                                        echo "Storing "$sinex3" in "${datasetsdir1}"/sinex"
+                                        goto next_topic
+                                endif
+                        endif
+                endif
+		ls -l $sinex3
+                @ gpsweek1 --
+        end
+
+
+
+
+next_topic:
+
+	if ( ! ( -f $sinex1 ) && ! ( -f $sinex2 )  && ! ( -f $sinex3 )) then
+		echo " "
+		#echo "ERROR: Non available accurate coordinates (sinex format) from: "
+		echo "WARNING: Non available accurate coordinates (sinex format) from: "
+		echo ${snxremotebdir_eur}/${gpsweek0}/$sinex1
+		echo ${snxremotebdir_cod}/${gpsweek0}/$sinex2
+                echo ${snxremotebdir_jpl}/${gpsweek0}/$sinex3
+		#exit -2
+		#set sinex="TRUE"
+		set sinex="FALSE"
+	else
+		#set sinex="FALSE"
+		set sinex="TRUE"
+	endif
+
+
+	rm -f snx.tmp snx.eur xyz.eur xyz.tot.0
+
+
+	if (-f $sinex1) then
+		#zcat $sinex1 | gawk '{if(NF>2){if(length($2)==4){if(substr($2,1,3)=="STA"){ii=$2"_"$3;k[ii]++;if(k[ii]==1)print $2,$3,$9,$10}}}}' > snx.eur
+		zcat $sinex1 | gawk '{if(NF>2){if(length($2)==4){if(substr($2,1,3)=="STA" && NF==10){ii=$2"_"$3;k[ii]++;if(k[ii]==1)print $2,$3,$9,$10}}}}' > snx.eur
+		ls -l snx.eur
+		paste -s snx.eur | gawk -F "STAX" '{for(i=1;i<=NF;i++){print $i}}' > snx2.tmp
+		ls -l snx2.tmp
+		#cat snx2.tmp | tail -n +2 | gawk '{rec=tolower($1);x=$2;sx=$3;y=$6;sy=$7;z=$10;sz=$11;printf "XYZ  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f\n","'$yy0'","'$month0'","'$day0'",0,0,0,rec,x,y,z}' > xyz.eur
+		cat snx2.tmp | tail -n +2 | gawk '{rec=tolower($1);x=$2;sx=$3;y=$6;sy=$7;z=$10;sz=$11;printf "XYZ  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f\n","'$yy0'","'$month0'","'$day0'",0,0,0,rec,x,y,z}' | fgrep -f ../../rec_ALL.sta > xyz.eur
+		ls -l xyz.eur
+		cat xyz.eur >> xyz.tot.0
+	endif
+
+	rm -f snx.tmp snx.cod xyz.cod
+
+	if (-f $sinex2) then
+		#zcat $sinex2 | gawk '{if(NF>2){if(length($2)==4){if(substr($2,1,3)=="STA"){ii=$2"_"$3;k[ii]++;if(k[ii]==1)print $2,$3,$9,$10}}}}' > snx.cod
+		zcat $sinex2 | gawk '{if(NF>2){if(length($2)==4){if(substr($2,1,3)=="STA" && NF==10){ii=$2"_"$3;k[ii]++;if(k[ii]==1)print $2,$3,$9,$10}}}}' > snx.cod
+		ls -l snx.cod
+		paste -s snx.cod | gawk -F "STAX" '{for(i=1;i<=NF;i++){print $i}}' > snx2.tmp
+		ls -l snx2.tmp
+		#cat snx2.tmp | tail -n +2 | gawk '{rec=tolower($1);x=$2;sx=$3;y=$6;sy=$7;z=$10;sz=$11;printf "XYZ  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f\n","'$yy0'","'$month0'","'$day0'",0,0,0,rec,x,y,z}' > xyz.cod
+		cat snx2.tmp | tail -n +2 | gawk '{rec=tolower($1);x=$2;sx=$3;y=$6;sy=$7;z=$10;sz=$11;printf "XYZ  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f\n","'$yy0'","'$month0'","'$day0'",0,0,0,rec,x,y,z}' | fgrep -f ../../rec_ALL.sta > xyz.cod
+		ls -l xyz.cod
+		cat xyz.cod >> xyz.tot.0
+	endif
+
+
+
+        if (-f $sinex3) then
+                #zcat $sinex2 | gawk '{if(NF>2){if(length($2)==4){if(substr($2,1,3)=="STA"){ii=$2"_"$3;k[ii]++;if(k[ii]==1)print $2,$3,$9,$10}}}}' > snx.jpl
+                zcat $sinex2 | gawk '{if(NF>2){if(length($2)==4){if(substr($2,1,3)=="STA" && NF==10){ii=$2"_"$3;k[ii]++;if(k[ii]==1)print $2,$3,$9,$10}}}}' > snx.jpl
+                ls -l snx.jpl
+                paste -s snx.jpl | gawk -F "STAX" '{for(i=1;i<=NF;i++){print $i}}' > snx2.tmp
+                ls -l snx2.tmp
+                #cat snx2.tmp | tail -n +2 | gawk '{rec=tolower($1);x=$2;sx=$3;y=$6;sy=$7;z=$10;sz=$11;printf "XYZ  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f\n","'$yy0'","'$month0'","'$day0'",0,0,0,rec,x,y,z}' > xyz.jpl
+                cat snx2.tmp | tail -n +2 | gawk '{rec=tolower($1);x=$2;sx=$3;y=$6;sy=$7;z=$10;sz=$11;printf "XYZ  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f\n","'$yy0'","'$month0'","'$day0'",0,0,0,rec,x,y,z}' | fgrep -f ../../rec_ALL.sta > xyz.jpl
+                ls -l xyz.jpl
+                cat xyz.jpl >> xyz.tot.0
+        endif
+
+#
+# In case the availability condition of precise coordinates is relaxed
+# an additional source of coordinates, from the RINEX header or quick
+# psuedorange processing, could be add here.
+# <<<<<<<<<<<<<<<<<<<<<<
+#
+
+	sort -u xyz.tot.0 > ../xyz.tot
+
+
+else
+
+	echo " "
+	echo "WARNING: using existing xyz.tot file"
+
+endif
+
+ls -l ../xyz.tot
+
+
+if ($run_level_end == "gathering_apriori_rec_coordinates") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit 
+endif
+
+
+map_with_involved_receivers:
+echo
+echo "============================="
+echo 
+echo '3b. Map with involved receivers'
+echo 
+echo "============================="
+
+cd ${wkdir}/apriori_rec_coordinates
+mkdir -p map
+cd map
+
+#reclst_CPF_TOMION = `echo $17 | sed 's/_/ /g'`
+#reclst_CPF_MSTIDmodel = `echo $18 | sed 's/_/ /g'`
+#reclst_CPF_phaseamb_fixing = `echo $19 | sed 's/_/ /g'`
+#reclst_rover_like_static = `echo $20 | sed 's/_/ /g'`
+#reclst_rover_like_kin
+rm -f xyz.*.tot
+foreach rec ( $reclst_CPF_TOMION ) 
+	#echo $rec
+	grep $rec ../xyz.tot >> xyz.CPF_TOMION.tot
+end
+foreach rec ( $reclst_CPF_MSTIDmodel ) 
+	#echo $rec
+	grep $rec ../xyz.tot >> xyz.MSTIDmodel.tot
+end
+foreach rec ( $reclst_CPF_phaseamb_fixing ) 
+	#echo $rec
+	grep $rec ../xyz.tot >> xyz.CPF_phaseamb_fixing.tot
+end
+foreach rec ( $reclst_rover_like_static ) 
+	#echo $rec
+	grep $rec ../xyz.tot >> xyz.rover_like_static.tot
+end
+foreach rec ( $reclst_rover_like_kin ) 
+	#echo $rec
+	grep $rec ../xyz.tot >> xyz.rover_like_kin.tot
+end
+wc -l xyz.*.tot
+
+#foreach xyzfile ( xyz.*.tot )
+foreach xyzfile ( xyz.CPF_TOMION.tot xyz.MSTIDmodel.tot xyz.CPF_phaseamb_fixing.tot xyz.rover_like_static.tot xyz.rover_like_kin.tot )
+	if ( -f $xyzfile ) then
+		echo
+		echo
+		set xyzid = `echo $xyzfile | gawk '{l=length($1)-8;print substr($1,5,l)}'`
+		echo $xyzfile $xyzid
+		${bindir1}/xyz_to_tot_and_eli.v2.scr $xyzfile
+		if ( -f GD-ERROR.log && ! ( -z GD-ERROR.log ) ) then
+			echo
+			echo "Run halted"
+			exit -1
+		endif
+#	######set lonmin=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{print $2-qdl}' $xyzfile.eli | sort -n | head -n 1`
+#	######set lonmax=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{print $2+qdl}' $xyzfile.eli | sort -nr | head -n 1`
+#	set latmin=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{print $3-qdl}' $xyzfile.eli | sort -n | head -n 1`
+#	set latmax=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{print $3+qdl}' $xyzfile.eli | sort -nr | head -n 1`
+	###set lonmin=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{print $2-qdl}' $xyzfile.eli | sort -g | head -n 1`
+	###set lonmax=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{print $2+qdl}' $xyzfile.eli | sort -gr | head -n 1`
+		set lonmin=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{lon=+$2;if(lon>180)lon=lon-360;print lon-qdl}' $xyzfile.eli | sort -g | head -n 1`
+		set lonmax=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{lon=+$2;if(lon>180)lon=lon-360;print lon+qdl}' $xyzfile.eli | sort -gr | head -n 1`
+		set latmin=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{print $3-qdl}' $xyzfile.eli | sort -g | head -n 1`
+		set latmax=`gawk 'BEGIN{qdl=+"'$quantum_dl'"}{print $3+qdl}' $xyzfile.eli | sort -gr | head -n 1`
+		echo
+		cat $xyzfile.eli
+		echo $lonmin $lonmax $latmin $latmax
+		echo
+	#echo ${bindir2}/tot_2_map_w_rec-names.v3HD.scr $view_yn $run_ID_extension"_"$xyzid ~ y $lonmin $lonmax $latmin $latmax $xyzfile.eli
+	#${bindir2}/tot_2_map_w_rec-names.v3HD.scr $view_yn $run_ID_extension"_"$xyzid ~ y $lonmin $lonmax $latmin $latmax $xyzfile.eli
+		echo ${bindir2}/tot_2_map_w_rec-names.v3b.scr $view_yn $run_ID_extension"_"$xyzid ~$masteruser y $lonmin $lonmax $latmin $latmax $xyzfile.eli
+		${bindir2}/tot_2_map_w_rec-names.v3b.scr $view_yn $run_ID_extension"_"$xyzid ~$masteruser y $lonmin $lonmax $latmin $latmax $xyzfile.eli
+	#echo "PROV.EXIT"
+	#exit -1
+	endif
+end
+
+if ($run_level_end == "map_with_involved_receivers") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit 
+endif
+
+voxels_definition:
+echo
+echo "============================="
+echo
+echo '4. Definition of voxels for Iono. tomography'
+echo
+echo "============================="
+
+mkdir -p ${wkdir}/voxels_definition/org
+cd ${wkdir}/voxels_definition/org
+
+###echo "450 1130" > hm_layers.tmp
+echo $hm_layers > hm_layers.tmp
+if ( $dra_iono_grid != -99 ) then
+	####gawk -f ${bindir1}/mk_regular_c.pri.v2.awk -v dlon=$dra_iono_grid -v dlat=$dlat_iono_grid > ../c.pri
+	gawk -f ${bindir1}/mk_regular_c.pri.v3.awk -v lat0=$lat0_iono_grid -v lat1=$lat1_iono_grid -v dlon=$dra_iono_grid -v dlat=$dlat_iono_grid > ../c.pri
+else
+	cp $dlat_iono_grid ../c.pri
+endif
+
+ls -l ../c.pri
+wc -l ../c.pri
+
+if ($run_level_end == "voxels_definition") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit 
+endif
+
+gathering_ephemeris_message:
+echo
+echo "============================="
+echo
+echo '5. Gathering of broadcast EPH message'
+echo
+echo "============================="
+
+mkdir -p ${wkdir}/ephemeris_message/org
+cd ${wkdir}/ephemeris_message/org
+
+set djm = $djm0 
+
+while ( $djm <= $djm1 )
+
+	set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+	set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+	set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+	#${bindir1}/wget_gps_data.v17d.scr $year $doy eph $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n 
+	${bindir1}/wget_gps_data.scr $year $doy eph $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n 
+
+	rm -f leapsec.*.*
+	rm -f iephver.tmp
+	rm -f leapsec.tmp
+	rm -f EPH.brdc.$djm
+
+	ls ????${doyf}0.${yy}n.Z > eph.lst
+
+	set ephfile=`cat eph.lst`
+
+	zcat $ephfile > $ephfile:r
+	ls -l $ephfile:r
+
+	echo $ephfile" === filling possible imcomplete lines ..."
+	cat $ephfile:r | gawk -f $bindir1/ephfile_2_fill_imcomplete_lines.awk > ./$ephfile:r.1
+	ls -l ./$ephfile:r.1
+
+	cat $ephfile:r.1 |  ${bindir1}/eph2ephlst  | sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 -n -k +2 > EPH.brdc.$djm
+	ls -l EPH.brdc.$djm
+
+	@ djm ++
+
+end
+
+sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 -n -k +2 EPH.brdc.[0-9][0-9][0-9][0-9][0-9] > ../EPH.brdc
+echo
+wc -l ../EPH.brdc
+ls -l ../EPH.brdc
+
+if ($run_level_end == "gathering_ephemeris_message") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+gathering_C1_P1:
+echo
+echo "============================="
+echo
+echo '6. Gathering of C1-P1 DCBs'
+echo
+echo "============================="
+
+mkdir -p ${wkdir}/C1_P1/org
+
+cd ${datasetsdir1}/C1-P1_bias
+#set cp1_selected_file=`ls  C1-P1.????.???.all | gawk -F "." 'BEGIN{y0=+"'$year0'";d0=+"'$doy0'";t0=y0+d0/366}{y=+$2;d=+$3;t=y+d/366;print sqrt((t-t0)**2),$0}' | sort -n -k 1 | gawk '{print $2}' | head -1`
+set cp1_selected_file=`ls C1-P1.????.???.all | gawk -F "." 'BEGIN{y0=+"'$year0'";d0=+"'$doy0'";t0=y0+d0/366}{y=+$2;d=+$3;t=y+d/366;print sqrt((t-t0)**2),$0}' | sort -k1,1g | head -n 1 | gawk '{print $2}'`
+
+
+cd ${wkdir}/C1_P1/org
+rm C1-P1.all
+ln -sf ${datasetsdir1}/C1-P1_bias/${cp1_selected_file} ../C1-P1.all
+paste -s ../C1-P1.all > ../C1-P1.all.s
+ls -l ../C1-P1.all*
+
+if ($run_level_end == "gathering_C1_P1") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+gathering_GPS_constellation_status:
+echo
+echo "============================="
+echo
+echo '7. Gathering GPS constellation status'
+echo
+echo "============================="
+
+mkdir -p ${wkdir}/GPS_const_status
+
+cd ${wkdir}/GPS_const_status
+
+cp ${gpsconsstatusfile} ./gpsconsstatus.lst
+ls -l ./gpsconsstatus.lst
+
+
+if ($run_level_end == "gathering_GPS_constellation_status") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+generating_messages_input:
+echo
+echo "============================="
+echo
+echo '8. Generating messages input file'
+echo
+echo "============================="
+
+mkdir -p ${wkdir}/messages_input/org
+cd ${wkdir}/messages_input/org
+
+
+ln -sf ../../rinex_files/????????*.??d.Z .
+ln -sf ../../C1_P1/C1-P1.all.s .
+ln -sf ../../apriori_rec_coordinates/xyz.tot .
+#ls -l
+
+if ( $source_of_measurements != "messages_input" ) then
+
+	rm -f messages1.input.0
+	cat xyz.tot > messages1.input.0
+	
+	rm -f OB[S,1].????
+	cat ../../ephemeris_message/EPH.brdc |  sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 -n -k +2 >> messages1.input.0
+	foreach hfile ( ????????*.??d.Z )
+		##set rnxfile = `echo $hfile | sed 's/d.Z/o/g'`
+		set rec = `echo $hfile | gawk '{print substr($1,1,4)}'`
+		set doy = `echo $hfile | gawk '{print substr($1,5,3)}'`
+		set yy = `echo $hfile | gawk '{l=length($1);print substr($1,l-4,2)}'`
+		set year = `echo $yy | gawk '{if($1>80){print 1900+$1}else{print 2000+$1}}'`
+		set month = `echo $year $doy | ${bindir1}/doy2cal | gawk '{print $2}'`
+		set day = `echo $year $doy | ${bindir1}/doy2cal | gawk '{print $3}'`
+		
+		set rnxfile=RNX.${rec}
+		echo $hfile $rnxfile $rec
+		rm -f rnx.00
+		zcat $hfile | ${bindir1}/crx2rnx > rnx.00
+	# Repairing some inconsistent OBS-types headers appearing in some TRIMBLE IGS
+	# receivers. Removing as well GLONASS measurements and post-header comments
+		cat rnx.00 | gawk -f ${bindir1}/rnx_typesobs-inconsistent_2_rnx_consistent.awk > typesobs.headerline
+		#cat rnx.00 | ${bindir1}/teqc -R | tee rnx.01 | ${bindir1}/teqc -O.obs L1P1C1L2P2C2$additional_obs_beyond_L1P1C1L2P2C2 | tee rnx.02 | gawk -f ${bindir1}/rnxorg2rnx_without_any_postheader_comment.awk > $rnxfile.0
+		cat rnx.00 | ${bindir1}/teqc -n_GLONASS 32 -R | tee rnx.01 | ${bindir1}/teqc -n_GLONASS 32 -O.obs L1P1C1L2P2C2$additional_obs_beyond_L1P1C1L2P2C2 | tee rnx.02 | gawk -f ${bindir1}/rnxorg2rnx_without_any_postheader_comment.awk > $rnxfile.0
+		ls -l rnx.00 rnx.01 rnx.02 $rnxfile.0
+	
+		rm -f $rnxfile
+		${bindir1}/clockprep -i $rnxfile.0 -o $rnxfile -fixtags
+		ls -l $rnxfile
+	
+		rm $rec*.sn? $rec*.mp? $rec*.io? $rec*.ele $rec*.azi
+	
+		zgrep "REC # / TYPE / VERS" $hfile | gawk '{print substr($0,21,20)}' > receiver_type.$rec
+		gawk 'BEGIN{getline < "receiver_type.'$rec'";rt1=substr($0,1,20)}{rt=substr($0,1,20);if(rt == rt1)print "'$rec'",$0}' ${datdir1}/GPS_Receiver_Types  > receiver_type+kind_correlation.$rec
+	
+		gawk '{print substr($0,1,4),substr($0,26)}' receiver_type+kind_correlation.$rec | gawk '{print $1,$2}' | sort -u > receiver_type+kind_correlation.1
+	
+		set kcorr_cp1=`grep $rec receiver_type+kind_correlation.1 | gawk '{print $2}'`
+		echo "rec,kcorr_cp1= "$rec,$kcorr_cp1
+		#rm -f OBS.${rec}
+	
+		if ( $kcorr_cp1 == 3 ) then
+			echo $rec": L1,L2,P1,P2 reported as consistent set. No bias removal needed (kcorr_cp1=3)"
+	
+			#cat RNX.$rec | ${bindir1}/teqc  -O.obs L1L2P2P1C1$additional_obs_beyond_L1P1C1L2P2C2 -O.mo $rec | tee teqc.out.tmp | ${bindir1}/rnx2rnxlst_noheader.v2.only_OBS_all_fields ${rec} >> OBS.${rec}
+			cat RNX.$rec | ${bindir1}/teqc -n_GLONASS 32 -O.obs L1L2P2P1C1$additional_obs_beyond_L1P1C1L2P2C2 -O.mo $rec | tee teqc.out.tmp | ${bindir1}/rnx2rnxlst_noheader.v2.only_OBS_all_fields ${rec} >> OBS.${rec}
+	
+		else
+	
+			if ( $kcorr_cp1 == 2 ) then
+	
+				echo $rec": C1 reported in place of P1. Needs C1->C1+b (kcorr_cp1=2)"
+	
+				#cat RNX.$rec | ${bindir1}/teqc  -O.obs L1L2P2C1$additional_obs_beyond_L1P1C1L2P2C2  -O.mo $rec | ${bindir1}/rnx2rnxlst_noheader.v2.only_OBS ${rec} | gawk -v cp1_class=C1 -f  ${bindir1}/OBS_2_OBS_C1_C1P2_correction_to_P1.awk | sed 's/L1    L2    P2    C1/L1    L2    P2    P1/g'  >> OBS.${rec}
+				cat RNX.$rec | ${bindir1}/teqc -n_GLONASS 32 -O.obs L1L2P2C1$additional_obs_beyond_L1P1C1L2P2C2  -O.mo $rec | ${bindir1}/rnx2rnxlst_noheader.v2.only_OBS ${rec} | gawk -v cp1_class=C1 -f  ${bindir1}/OBS_2_OBS_C1_C1P2_correction_to_P1.awk | sed 's/L1    L2    P2    C1/L1    L2    P2    P1/g'  >> OBS.${rec}
+	
+			else
+	
+				if ( $kcorr_cp1 == 1 ) then
+	
+					echo $rec": Cross correlated receiver. Needs C1->C1+b, P2->P2+b (kcorr_cp1=1)"
+	
+					#cat RNX.$rec | ${bindir1}/teqc  -O.obs L1L2P2C1$additional_obs_beyond_L1P1C1L2P2C2  -O.mo $rec | ${bindir1}/rnx2rnxlst_noheader.v2.only_OBS ${rec} | gawk -v cp1_class=C1P2 -f  ${bindir1}/OBS_2_OBS_C1_C1P2_correction_to_P1.awk | sed 's/L1    L2    P2    C1/L1    L2    P2    P1/g'  >> OBS.${rec}
+					cat RNX.$rec | ${bindir1}/teqc -n_GLONASS 32 -O.obs L1L2P2C1$additional_obs_beyond_L1P1C1L2P2C2  -O.mo $rec | ${bindir1}/rnx2rnxlst_noheader.v2.only_OBS ${rec} | gawk -v cp1_class=C1P2 -f  ${bindir1}/OBS_2_OBS_C1_C1P2_correction_to_P1.awk | sed 's/L1    L2    P2    C1/L1    L2    P2    P1/g'  >> OBS.${rec}
+				else
+	
+					echo "WARNING: Skipping "$rec" with kcorr_cp1= "$kcorr_cp1
+					goto skipping_receiver
+	
+	
+				endif
+	
+			endif
+	
+		endif	
+	
+		ls -l OBS.${rec}
+	
+	#
+	# Detecting cycle slips
+	#
+	        #cat OBS.${GTrec} | gawk -f ${GTbindir}/OBS_2_OB1.v6_gps_nextgps_and_galileo.awk -v dtsecmax=${GTdtsecmax} -v d2Limax0=${GTd2Limax0} -v d2Limax_per_sec=${GTd2Limax_per_sec} -v dBwmax=${GTdBwmax} -v dBewmax=${GTdBewmax} -v dlew_wmax=${GTdlew_wmax} -v integer_phase_ambiguity_alignement=${GTinteger_phase_ambiguity_alignement} > OB1.${GTrec}
+	        #cat OBS.${GTrec} | gawk -f ${GTbindir}/OBS_2_OB1.v7.awk -v dtsecmax=${GTdtsecmax} -v d2Limax0=${GTd2Limax0} -v d2Limax_per_sec=${GTd2Limax_per_sec} -v dBwmax=${GTdBwmax} -v dBewmax=${GTdBewmax} -v dlew_wmax=${GTdlew_wmax} -v integer_phase_ambiguity_alignement=${GTinteger_phase_ambiguity_alignement} > OB1.${GTrec}
+	        #cat OBS.${GTrec} | gawk -f ${GTbindir}/OBS_2_OB1.v8.awk -v dtsecmax=${GTdtsecmax} -v d2Limax0=${GTd2Limax0} -v d2Limax_per_sec=${GTd2Limax_per_sec} -v dBwmax=${GTdBwmax} -v dBewmax=${GTdBewmax} -v dlew_wmax=${GTdlew_wmax} -v integer_phase_ambiguity_alignement=${GTinteger_phase_ambiguity_alignement} > OB1.${GTrec}
+	        cat OBS.${rec} | gawk -f ${bindir1}/OBS_2_OB1.v9.awk -v dtsecmax=${dtsecmax_nocycleslip} -v d2Limax0=${d2Limax0_nocycleslip} -v d2Limax_per_sec=${d2Limax_per_sec_nocycleslip} -v dBwmax=${dBwmax_nocycleslip} -v dBewmax=${dBewmax_nocycleslip} -v dlew_wmax=${dlew_wmax_nocycleslip} -v integer_phase_ambiguity_alignement=${integer_phase_ambiguity_alignement} > OB1.${rec}
+	
+		ls -l OB1.${rec}
+	
+	#	rm -f messages1.input.0
+	#
+	# Adding messages.input file
+	#
+	
+	#
+	# Starting messages.input file, with EPH records
+	#
+	#	if ( $eph_needed ) then
+	#	cat EPH.brdc |  sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 -n -k +2 > messages1.input.0
+	#	else
+	#		rm -f messages1.input.0
+	#		touch messages1.input.0
+	#	endif
+	
+	#
+	# Adding ANT, AND and WLF messages
+	#
+		
+	#	zgrep "APPROX POSITION XYZ"  $rnxfile > $rec.xyz
+		zgrep "ANTENNA: DELTA H/E/N" $rnxfile | head -1> $rec.and
+		##echo "0220368139          TRM29659.00     NONE                    ANT # / TYPE" > $rec.ant
+		zgrep "ANT # / TYPE" $rnxfile > $rec.ant
+		zgrep "WAVELENGTH FACT L1/2" $rnxfile > $rec.wlf
+	
+		gawk '{l=length(FILENAME);rec=substr(FILENAME,l-7,4);printf "ANT  0 %02d %2d %2d %2d %2d %4.1f %s %s%s\n","'$yy'","'$month'","'$day'",0,0,0,rec,substr($0,1,20),substr($0,21,20)}' $rec.ant >> messages1.input.0
+		gawk '{l=length(FILENAME);rec=substr(FILENAME,l-7,4);printf "AND  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f\n","'$yy'","'$month'","'$day'",0,0,0,rec,$1,$2,$3}' $rec.and >> messages1.input.0
+		gawk '{l=length(FILENAME);rec=substr(FILENAME,l-7,4);printf "WLF  0 %02d %2d %2d %2d %2d %4.1f %s %6d%6d\n","'$yy'","'$month'","'$day'",0,0,0,rec,$1,$2}' $rec.wlf >> messages1.input.0
+	
+	#
+	# Adding Ocean Tidal Loading models (OT2 messages)
+	#
+	        #grep $rec $GTotlfile | gawk -v yy=$GTyy -v mo=$GTm -v da=$GTday -v ho=$hh -v mi=$mm -v se=$ss -f ${GTbindir}/otl_2_ot2_formats.awk > ot2.$rec
+	         gawk 'BEGIN{rec="'$rec'"}{if($1==rec)print $0}' $otlfile | gawk -v yy=$yy -v mo=$month -v da=$day -v ho=0 -v mi=0 -v se=0 -f ${bindir1}/otl_2_ot2_formats.awk > ot2.$rec
+		if ( -f ot2.$rec && ! ( -z ot2.$rec ) ) then
+			cat ot2.$rec >>  messages1.input.0
+		else
+	#		echo "ERROR: Non available Ocean Tidal Loading model for "$rec
+	#		echo "       Receiver skipped"
+	#		goto skipping_receiver
+			echo " "
+			echo "WARNING: Non available Ocean Tidal Loading model for "$rec
+			echo " "
+		endif
+	
+		skipping_receiver:	
+	
+	#
+	# Adding OB1 records
+	#
+	
+	#BUG corrected in 20081214####	cat OB1.???? >> messages1.input.0
+	#	cat OB1.$rec >> messages1.input.0
+	
+	#
+	# Adding apriori coordinates
+	#
+	
+	#        grep $rec xyz.tot > xyz.tot.$rec
+	
+		#echo "PROV.EXIT"
+		#exit -1
+	
+	
+	
+	end
+	
+	rm -f messages1.input.00 ../messages1.input.gz
+	cat messages1.input.0 OB1.???? > messages1.input.00
+	
+	#sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 -k +2 messages1.input.00 | gzip > ../messages1.input.gz
+	sort -k3n,3 -k4n,4 -k5n,5 -k6n,6 -k7n,7 -k8g,8 -k2n,2 messages1.input.00 | gzip > ../messages1.input.gz
+	ls -l ../messages1.input.gz
+	
+else
+	cd ..
+	ln -s $messages_input_file ./messages1.input.gz
+	echo 
+	echo "WARNING: adopting external messages_input_file = "$messages_input_file" (source_of_measurements = messages_input)"
+endif
+
+if ($run_level_end == "generating_messages_input") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+expected_vs_observed_satellite_visibility:
+echo
+echo "============================="
+echo 
+echo '8b. Expected vs. observed satellite visibility'
+echo 
+echo "============================="
+
+if ( $refrec != "_" ) then
+	mkdir -p ${wkdir}/expected_vs_observed_satellite_visibility
+	cd ${wkdir}/expected_vs_observed_satellite_visibility
+
+	rm -f xyz*.tot xyz.????
+	rm -f sp3e_??-??-??
+
+	ln -sf ../apriori_rec_coordinates/map/xyz.CPF_TOMION.tot .
+	ln -sf ../apriori_rec_coordinates/map/xyz.MSTIDmodel.tot .
+	ln -sf ../apriori_rec_coordinates/map/xyz.CPF_phaseamb_fixing.tot .
+	ln -sf ../apriori_rec_coordinates/map/xyz.rover_like_static.tot .
+	ln -sf ../apriori_rec_coordinates/map/xyz.rover_like_kin.tot .
+
+	cat xyz.*.tot | gawk '{rec=$9;record[rec]=$0}END{for(rec in record){print record[rec]}}' > xyz.tot
+	gawk '{rec=$9;print $0 > "xyz_"rec}' xyz.tot
+	wc -l xyz.*.tot
+	wc -l xyz_????
+
+	ln -sf ../orbits_clocks/sp3e.lst .
+	gawk '{yyf=sprintf("%02d",$3);mof=sprintf("%02d",$4);daf=sprintf("%02d",$5);print $0 > "sp3e_"yyf"-"mof"-"daf}' sp3e.lst
+	wc -l sp3e.lst
+	wc -l sp3e_??-??-??
+
+#if ( $refrec != "_" ) then
+	ln -sf ../messages_input/messages1.input.gz .
+	rm -f prn.${refrec}.lst prn.lst.s
+	##zgrep ^OB1 messages1.input.gz | grep ${refrec} | gawk '{rec=$9;prn=+$2;yyf=sprintf("%02d",$3);mof=sprintf("%02d",$4);daf=sprintf("%02d",$5);print $0 > "OB1_"rec"_"yyf"-"mof"-"daf;print prn}' | sort -nu > prn.${refrec}.lst
+	#zgrep ^OB1 messages1.input.gz | gawk '{rec=$9;prn=+$2;yyf=sprintf("%02d",$3);mof=sprintf("%02d",$4);daf=sprintf("%02d",$5);print $0 > "OB1_"rec"_"yyf"-"mof"-"daf;print prn}' | sort -nu > prn.${refrec}.lst
+	zgrep ^OB1 messages1.input.gz | gawk 'BEGIN{refrec="'$refrec'"}{rec=$9;prn=+$2;yyf=sprintf("%02d",$3);mof=sprintf("%02d",$4);daf=sprintf("%02d",$5);print $0 > "OB1_"rec"_"yyf"-"mof"-"daf;if(rec==refrec)print prn}' | sort -nu > prn.${refrec}.lst
+	wc -l prn.${refrec}.lst
+	paste -s prn.${refrec}.lst > prn.ob1ref.lst.s
+#endif
+
+#exit -1
+
+#rm -f RSA.tmp
+	rm -f yy_mm_dd_itsec_prn_common-obs-w-refrec yy_mm_dd_itsec_prn_common-obs-w-all 
+	foreach sp3efile ( sp3e_??-??-?? )
+		echo
+		echo "================================"
+		set yymodd = `echo $sp3efile | gawk -F"_" '{print $2}'`
+		echo $yymodd
+
+#
+# Looking for the actual availability of preprocessed observations, including the target day/s (beyond previous and after days typically included in the precise orbits file)...
+#
+		rm -f istec_prn_common.s itsec_prn_common-obs-w-all itsec_prn_common-obs-w-refrec prn_itsec.refrec.s prn_itsec.refrec
+#
+		if ( -f OB1_${refrec}_${yymodd} ) then
+			gawk '{itsec=$6*3600+$7*60+int($8+.5);prn=+$2;print prn,itsec}' OB1_${refrec}_${yymodd} | tee prn_itsec.refrec | paste -s > prn_itsec.refrec.s
+			wc -l prn_itsec.refrec prn_itsec.refrec.s
+		#cat OB1_????_${yymodd} | grep -v ${refrec} | gawk 'BEGIN{getline < "prn_itsec.refrec.s";n=NF/2;for(i=1;i<=n;i++){i1=2*i-1;i2=i1+1;itsec_refrec=+$i1;prn_refrec=+$i2;exists_pr[itsec_refrec" "prn_refrec]=1}}{itsec=$6*3600+$7*60+int($8+.5);prn=+$2;ii=itsec" "prn;kon[ii]++}END{for(ii in kon){print ii,kon[ii]}}' | sort -n > itsec_prn_common-obs-w-refrec
+		#cat OB1_????_${yymodd} | grep -v ${refrec} | gawk 'BEGIN{getline < "prn_itsec.refrec.s";n=NF/2;for(i=1;i<=n;i++){i1=2*i-1;i2=i1+1;prn_refrec=+$i1;itsec_refrec=+$i2;exists_pr[itsec_refrec" "prn_refrec]=1;print "BEGIN: "itsec_refrec" "prn_refrec}}{itsec=$6*3600+$7*60+int($8+.5);prn=+$2;ii=itsec" "prn;print "ii= "ii;if(exists_pr[ii]){kon[ii]++}}END{for(ii in kon){print ii,kon[ii]}}' | sort -n > itsec_prn_common-obs-w-refrec
+			cat OB1_????_${yymodd} | grep -v ${refrec} | gawk 'BEGIN{getline < "prn_itsec.refrec.s";n=NF/2;for(i=1;i<=n;i++){i1=2*i-1;i2=i1+1;prn_refrec=+$i1;itsec_refrec=+$i2;exists_pr[itsec_refrec" "prn_refrec]=1}}{itsec=$6*3600+$7*60+int($8+.5);prn=+$2;ii=itsec" "prn;if(exists_pr[ii]){kon[ii]++}}END{for(ii in kon){print ii,kon[ii]}}' | sort -n > itsec_prn_common-obs-w-refrec
+			gawk 'BEGIN{yymodd="'${yymodd}'";yy=+substr(yymodd,1,2);mo=+substr(yymodd,4,2);dd=substr(yymodd,7,2)}{print yy,mo,dd,$0}' itsec_prn_common-obs-w-refrec >> yy_mm_dd_itsec_prn_common-obs-w-refrec
+			wc -l itsec_prn_common-obs-w-refrec yy_mm_dd_itsec_prn_common-obs-w-refrec
+		#echo "PROV.EXIT"
+		#exit -1
+			set n_nonrefrec = `ls OB1_????_${yymodd} | grep -v ${refrec} | wc -l`
+			echo
+			echo "(a) n_nonrefrec = "$n_nonrefrec
+			grep " "${n_nonrefrec}$ itsec_prn_common-obs-w-refrec > itsec_prn_common-obs-w-all
+			gawk 'BEGIN{yymodd="'${yymodd}'";yy=+substr(yymodd,1,2);mo=+substr(yymodd,4,2);dd=substr(yymodd,7,2)}{print yy,mo,dd,$0}' itsec_prn_common-obs-w-all >> yy_mm_dd_itsec_prn_common-obs-w-all
+			wc -l itsec_prn_common-obs-w-all yy_mm_dd_itsec_prn_common-obs-w-all
+			gawk '{print $1,$2}' itsec_prn_common-obs-w-all | sort -n | paste -s > istec_prn_common.s
+			wc -l istec_prn_common.s
+		#echo "PROV.EXIT"
+		#exit -1
+		endif
+	
+		foreach xyzfile ( xyz_???? )
+			set rec = `echo $xyzfile | gawk '{print substr($1,5,4)}'`
+	
+			echo
+			echo $yymodd $rec
+
+			echo $xyzfile $sp3efile $yymodd
+			echo ${bindir1}/xyz_sp3e_to_expected_satellite_visibility.scr $xyzfile $sp3efile
+			${bindir1}/xyz_sp3e_to_expected_satellite_visibility.scr $xyzfile $sp3efile
+
+			set esv_file = ${xyzfile}_to_${sp3efile}.esv
+
+			if ( ! ( -f $esv_file ) || ( -z $esv_file ) ) then
+				echo "ERROR: Non-existing, or zero-bytes, file "$esv_file
+				echo "Execution aborted"
+				exit -1
+			else
+#			if ( $refrec != "_" ) then
+				#gawk 'BEGIN{elemin=+"'$elemin_refsat'";getline < "prn.ob1ref.lst.s";n=NF;for(i=1;i<=n;i++){prnob1ref[i]=+$i}}{prn=+$2;ele=+$10;if(ele >= elemin){for(i=1;i<=n;i++){if(prn==prnob1ref[i]){print $0;next}}}}' $esv_file > $esv_file.ob1ref.elemin_${elemin_refsat}
+				gawk 'BEGIN{elemin=+"'$elemin_refsat'";getline < "istec_prn_common.s";n=NF/2;for(i=1;i<=n;i++){i1=2*i-1;i2=i1+1;itsec_co=+$i1;prn_co=+$i2;common_obs[itsec_co" "prn_co]=1}}{prn=+$2;itsec=$6*3600+$7*60+int($8+.5);prn=+$2;ii=itsec" "prn;ele=+$10;if(ele >= elemin){if(common_obs[ii]==1)print $0}}' $esv_file > $esv_file.ob1common.elemin_${elemin_refsat}
+				wc -l $esv_file $esv_file.ob1common.elemin_${elemin_refsat}
+
+				#echo "PROV.EXIT"
+				#exit -1
+#			endif
+
+			#sed s/REC/${rec}/g ${templatesdir1}/expected_vs_observed_satellite_visibility.${typical_plot_behaviour}.gnu.org | sed s/YYMODD/${yymodd}/g > expected_vs_observed_satellite_visibility.${rec}.${yymodd}.${typical_plot_behaviour}.gnu
+i				sed s/REC/${rec}/g ${templatesdir1}/expected_vs_observed_satellite_visibility.${typical_plot_behaviour}.gnu.org | sed s/YYMODD/${yymodd}/g | sed s/ELEMIN_REFSAT/${elemin_refsat}/g > expected_vs_observed_satellite_visibility.${rec}.${yymodd}.${typical_plot_behaviour}.gnu
+				gnuplot expected_vs_observed_satellite_visibility.${rec}.${yymodd}.${typical_plot_behaviour}.gnu
+				ls -l expected_vs_observed_satellite_visibility.${rec}.${yymodd}.png
+			#echo "PROV.EXIT"
+			#exit -1
+			endif
+
+		end
+		
+	#echo "PROV.EXIT"
+	#exit -1
+		rm -f refsat.${yymodd}
+#	if ( $refrec != "_" ) then
+		echo
+		set eoe_file_r = xyz_${refrec}_to_${sp3efile}.esv.ob1common.elemin_${elemin_refsat}
+		gawk -f ${bindir1}/esv_2_prn-w-max-time-above-horizon-in-RT-mode.awk $eoe_file_r > refsat.${yymodd}
+		wc -l refsat.${yymodd}
+		wc -l esv_2_prn-w-max-time-above-horizon-in-RT-mode.log
+		#gawk 'BEGIN{ymd="'$yymodd'";yy=substr(ymd,1,2);mo=substr(ymd,4,2);dd=substr(ymd,7,2);if(yy<80){year=2000+yy}else{year=1900+yy}}{kon++;prn=+$3;if(kon==1){hh0=0;mi0=0;isec0=0}else{hh0=int($1/3600);mi0=int(($1-hh0*3600)/60);isec0=$1-hh0*3600-mi0*60};if(kon>1){printf "%2d %2d %2d %5d\n",hh0,mi0,isec0,$1};printf "RSA %2d %4d %2d %2d %2d %2d %2d %5d ",prn,year,mo,dd,hh0,mi0,isec0,$1}END{if(kon>0)printf "%2d %2d %2d %5d\n",23,59,59,86399}' refsat.${yymodd} >> RSA.tmp
+	#echo "PROV.EXIT"
+	#exit -1
+	end
+
+else
+
+	echo 
+	echo "Warning: Expected vs. observed satellite visibility runlevel skipped (no reference receiver defined)"
+endif
+#wc -l RSA.tmp
+
+#
+#Determining the reference satellites in almost real-time-like mode: starting by the satellite with highest elevation, among the observed ones (OB1), it is maintained until this satellite goes down to 20 deg. Afterwards the next satellite is selected among the one with largest period of time above 20 deg., and so on until finishing the day.
+#
+
+if ($run_level_end == "expected_vs_observed_satellite_visibility") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit 
+endif
+
+generating_prefits:
+echo
+echo "============================="
+echo
+echo '9. Generating prefits'
+echo
+echo "============================="
+mkdir -p ${wkdir}/prefits/org
+cd ${wkdir}/prefits/org
+
+rm -f prefits.0* ../prefits.gz
+
+ln -sf ../../messages_input/messages1.input.gz .
+ls -l messages1.input.gz
+ln -sf ../../voxels_definition/c.pri .
+ls -l c.pri
+ln -sf ../../orbits_clocks/sp3e.lst .
+ls -l sp3e.lst
+ln -sf ../../GPS_const_status/gpsconsstatus.lst .
+ls -l gpsconsstatus.lst
+ln -sf ../../expected_vs_observed_satellite_visibility/refsat.??-??-?? .
+#set n_nonrefrec = `ls ../../expected_vs_observed_satellite_visibility/OB1_????_${yymodd} | grep -v ${refrec} | wc -l`
+set n_nonrefrec = `ls ../../expected_vs_observed_satellite_visibility/OB1_????_??-??-?? | grep -v ${refrec} | gawk -F"_" '{print $(NF-1)}' | sort -u | wc -l`
+echo "(b) n_nonrefrec = "$n_nonrefrec
+
+rm -f rover_sp3e.lst
+rm -f reference_receiver.sta to_estimate_position.sta rover_sp3e.lst rover_like.sta rover_sp3.sta rover_rt.sta fixing_ambiguities.sta
+cp -p ${wkdir}/refrec.sta reference_receiver.sta
+cp -p ${wkdir}/reclst_CPF_phaseamb_fixing.sta fixing_ambiguities.sta
+###cat ${wkdir}/reclst_rover_like_static.sta  ${wkdir}/reclst_CPF_MSTIDmodel.sta > rover_like.sta
+cat ${wkdir}/reclst_rover_like_static.sta  ${wkdir}/reclst_rover_like_kin.sta ${wkdir}/reclst_CPF_MSTIDmodel.sta > rover_like.sta
+
+
+#cp -p $mi2pre_nml ${mi2pre_program}.nml
+
+#sed s/ITROPO_MODEL/${itropo_model}/g $mi2pre_nml > ${mi2pre_program}.nml
+sed s/ITROPO_MODEL/${itropo_model}/g $mi2pre_nml | sed s/ionsat-tools-master/`whoami`/g > ${mi2pre_program}.nml
+
+#New tropo subsection (201610_25, VG):
+if ( ( $itropo_model == 2 ) || ( $itropo_model == 3 ) || ( $itropo_model == 4 ) ) then
+       set brfileg = http://ggosatm.hg.tuwien.ac.at/DELAY/SOURCE/GPT2w/gpt2_1wA.grd
+                echo $brfileg
+                if ( ! -f  gpt2_1wA.grd ) then
+                        wget $brfileg
+                        echo $brfileg
+                else
+                       echo
+                       echo "Warning: using existing file "
+                endif
+endif
+
+if (  $itropo_model == 3 ) then
+ set djm = $djm0
+ set hhlst = "00 06 12 18"
+ set kon_vmfg = 1
+ set kon_vmfgf = `echo $kon_vmfg | gawk '{printf "%04d",$1}'`
+ echo $djm $itropo_model
+#exit -1
+ while ( $djm <= $djm1 )
+
+        set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+        set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+        set monthf = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$2}'`
+        set dayf = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$3}'`
+
+        set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+        set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+
+        foreach hh ( $hhlst )
+                echo
+                echo $hh $doyf
+                set brfile = http://ggosatm.hg.tuwien.ac.at/DELAY/GRID/VMFG/${year}/VMFG_${year}${monthf}${dayf}.H${hh}
+                echo $brfile
+                if ( ! -f  VMFG_${year}${monthf}${dayf}.H${hh} ) then
+                        wget $brfile
+                else
+                        echo
+                        echo "Warning: using existing file "VMFG_${year}${monthf}${dayf}.H${hh}
+                endif
+                rm -f VMFG_${year}${doyf}${hh}
+                ln -sf VMFG_${year}${monthf}${dayf}.H${hh} VMFG_${year}${doyf}${hh}
+
+                ln -sf VMFG_${year}${monthf}${dayf}.H${hh} VMFG_${year}${doyf}${hh}
+
+
+                ls -l VMFG_${year}${monthf}${dayf}.H${hh} VMFG_${year}${doyf}${hh}
+
+#               rm -f VMFG.H${kon_vmfgf}
+#               echo "PROV.EXIT"
+#               echo "(ESTAMOS AQUI...)"
+#               exit -1
+#               ln -sf VMFG_${year}${monthf}${dayf}.H${hh} VMFG.H${kon_vmfgf}
+#               ls -l VMFG_${year}${monthf}${dayf}.H${hh} VMFG.H${kon_vmfgf}
+#        @ kon_vmfgf ++
+#        set kon_vmfgf = `echo $kon_vmfgf | gawk '{printf "%04d",$1}'`
+#        echo $kon_vmfgf
+        end
+# exit -1
+        set n_exp_files = `ls -l  VMFG_${year}${monthf}${dayf}.H??  | wc -l `
+        echo $n_exp_files
+        echo "n_exp_files  = "$n_exp_files
+
+       if ( $n_exp_files != 4 ) then
+                echo
+                echo "ERROR: n_exp_files != 4 (please check the sampling time at "$brfile")"
+                exit -1
+        endif
+        @ djm ++
+ end
+#endif
+
+
+
+#We need to download the first file for the following day after the last epoch
+ @ djm1 ++
+ set djm = $djm1 
+ echo $djm 
+ set hh = "00"
+         set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+         set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+ 
+         set monthf = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$2}'`
+         set dayf = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$3}'`
+
+         set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+         set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+
+
+ set brfile = http://ggosatm.hg.tuwien.ac.at/DELAY/GRID/VMFG/${year}/VMFG_${year}${monthf}${dayf}.H${hh}
+ echo $brfile
+ if ( ! -f  VMFG_${year}${monthf}${dayf}.H${hh} ) then
+         wget $brfile
+ else
+         echo
+         echo "Warning: using existing file "VMFG_${year}${monthf}${dayf}.H${hh}
+ endif
+ rm -f VMFG_${year}${doyf}${hh}
+# ln -sf VMFG_${year}${monthf}${dayf}.H${hh} VMFG_${year}${doyf}${hh}
+
+# ls -l VMFG_${year}${monthf}${dayf}.H${hh} VMFG_${year}${doyf}${hh}
+
+
+#We make the softlinks for the H24
+ set djm = $djm0
+ echo $djm
+ set hh = "00"
+ while ( $djm < $djm1 )
+
+         set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+         set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+         set monthf = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$2}'`
+         set dayf = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$3}'`
+         set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+	 @ djm ++
+
+         set year2 = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+         set doy2 = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+         set monthf2 = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$2}'`
+         set dayf2 = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$3}'`
+         set doyf2 = `echo $doy2 | gawk '{printf "%03d",$1}'`
+
+
+
+ ln -sf VMFG_${year2}${monthf2}${dayf2}.H${hh} VMFG_${year}${doyf}24
+
+ end
+endif
+
+if (  $itropo_model == 4 ) then
+ set djm = $djm0
+ @ djm1 ++
+ echo $djm $itropo_model $djm1
+ while ( $djm <= $djm1 )
+
+        set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+        set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+        set monthf = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$2}'`
+        set dayf = `echo $djm |  ${bindir}/djm2cal1 | gawk '{printf "%02d",$3}'`
+
+        set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+        set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+#http://ggosatm.hg.tuwien.ac.at/DELAY/SITE/GPS/2014/2014112.vmf1_g
+        set brfile = http://ggosatm.hg.tuwien.ac.at/DELAY/SITE/GPS/${year}/${year}${doyf}.vmf1_g
+        echo $brfile
+        if ( ! -f  ${year}${doyf}.vmf1_g ) then
+                wget $brfile
+        else
+                echo
+                echo "Warning: using existing file "${year}${doyf}.vmf1_g
+        endif
+
+
+# exit -1
+        set n_exp_files = `ls -l  ${year}${doyf}.vmf1_g  | wc -l `
+        echo $n_exp_files
+        echo "n_exp_files  = "$n_exp_files
+
+       if ( $n_exp_files != 1 ) then
+                echo
+                echo "ERROR: n_exp_files != 1 (please check the sampling time at "$brfile")"
+                exit -1
+        endif
+        @ djm ++
+
+        cat ${year}${doyf}.vmf1_g | gawk '{rec=tolower($1);mjd=$2;ah=$3;aw=$4;zhd=$5;zwd=$6;Tm=$7;P=$8;T=$9;e=$10;H=$11;print rec,mjd,ah,aw,zhd,zwd,Tm,P,T,e,H}' > ${year}${doyf}.vmf1
+
+
+ end
+#echo "Prov. exit itropo 4"
+#exit -1
+
+#        cat ${year}${doyf}.vmf1_g | gawk '{rec=tolower($1);mjd=$2;ah=$3;aw=$4;zhd=$5;zwd=$6;Tm=$7;P=$8;T=$9;e=$10;H=$11;print rec,mjd,ah,aw,zhd,zwd,Tm,P,T,e,H}' > ${year}${doyf}.vmf1
+
+
+endif
+#echo "Salida Vienna "
+#exit -1
+
+
+ls -l ${PWD}/${mi2pre_program}.nml
+
+echo 0
+echo "refrec = "$refrec
+if ( $refrec == "_" ) then
+#
+# No reference receiver: undifference processing assumed
+#
+	echo 1
+	echo
+	echo "NO reference-receiver considering for processing the prefits..."
+	echo
+	if ( $cycle_slip_double_check_rec_cent_preLc == "y" ) then
+		zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | grep ^PR | sort -k3,3n -k4,4n -k5,5n -k6,6n -k7,7n -k8,8n -k37,37nr -k38,38n -k9,9 -k2,2n | gawk -f ${bindir1}/PRX_2_PRX_w_cycle-slip-double-check_from_per-receiver-centered_Lc_prefits_constancy.awk | gzip > ./prefits.no_refrec.gz
+	else
+		zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | gzip > ./prefits.no_refrec.gz
+	endif
+	ln -sf ${PWD}/prefits.no_refrec.gz ../prefits.gz
+else
+
+
+#------------------------------------------------------------------
+#
+# FILTERING ATTEMPT #1 (Nov. 2016): Checking / filtering PR2 availability (1 obs. from ref. rec. and at least 1 no-ref.rec. obs. per type of measurement and satellite available) for differential processing
+#
+	#zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | tee prefits.0 | gawk -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.awk | gzip > ../prefits.gz
+#
+#------------------------------------------------------------------
+#
+# FILTERING ATTEMPT #2 (First half Dec. 2016): NEXT LINES WHEN IT WAS UNSUCCESSFULLY TRIED IMPLICIT ("PHASE CLOCK") DD APPROACH (before fixing some bugs in prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v3.awk...) ** It could be worthy to revisit it in the future, under less work overload * *
+#
+# To facilitate the right differential approach with the carrier phase including the "phase clock" approach for the receference receiver modelling.
+#
+# Looking as well at the satellites potentially used as reference for "phase-clock"-like approach (either
+# from maximum time above the horizon, either from maximum elevation angle...)
+#
+#	rm -f yy_etc_rec_prn_kind_rec_kind_sat_4_not_refrec_and_not_refsat.tmp yy_etc_rec_prn_kind_rec_kind_sat_4_refrec_or_refsat.tmp
+#	zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | tee prefits.0 | gawk -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v3.awk | gawk '{if($1=="PR4"){k=+$37;j=+$38;if(!(k==1 && j==3))print $0}else{print $0}}' | tee PR4.tmp | gawk '{if($1=="PR4"){narch=$42;nunk=$43;kind_sat0=$NF;kind_sat=kind_sat0;kind_rec0=$11;kind_rec=kind_rec0;if(kind_sat0!=0){kind_sat=1};if(kind_rec0!=0){kind_rec=1};k=+$37;j=+$38;yy=+$3;mo=+$4;da=+$5;itsec=$6*3600+$7*60+int($8+.5);rec=$9;prn=+$2;iitk=yy"_"mo"_"da"_"itsec"_"kind_rec"_"kind_sat;if(k==2 && j==3){if(kind_rec!=0 && kind_sat!=0){ii=iitk"_"rec"_"prn;print ii,narch > "yy_etc_rec_prn_kind_rec_kind_sat_4_not_refrec_and_not_refsat.tmp"}else{if(kind_rec==0 && kind_sat==0){print iitk,narch}else{if(kind_rec==0){print iitk"_"prn,narch}else{print iitk"_"rec,narch}}}}}}' > yy_etc_rec_prn_kind_rec_kind_sat_4_refrec_or_refsat.tmp
+#	paste -s yy_etc_rec_prn_kind_rec_kind_sat_4_refrec_or_refsat.tmp > yy_etc_rec_prn_kind_rec_kind_sat_4_refrec_or_refsat.s
+#	rm -f error_na00_etc.log
+#	cat PR4.tmp | gawk 'BEGIN{getline < "yy_etc_rec_prn_kind_rec_kind_sat_4_refrec_or_refsat.s";n=NF/2;for(i=1;i<=n;i++){i1=2*i-1;i2=i1+1;ii=$i1;narch0[ii]=$i2}}{if($1=="PR4"){narch=$42;kind_rec=$11;kind_sat=$NF;k=+$37;j=+$38;yy=+$3;mo=+$4;da=+$5;itsec=$6*3600+$7*60+int($8+.5);rec=$9;prn=+$2;iit=yy"_"mo"_"da"_"itsec;ii00=iit"_0_0";ii01=iit"_0_1_"prn;ii10=iit"_1_0_"rec;$NF="";$1="PR2";if(kind_rec!=0 && kind_sat!=0){na00=narch0[ii00];na01=narch0[ii01];na10=narch0[ii10];if(length(na00)>0 && length(na01)>0 && length(na10)>0){narch1=narch+na01+1000*(na00+na10);$42=narch1;print $0}else{print "WARNING, inconsistency: Not existing na00 or na01 or na10: " > "error_na00_etc.log";print $0 > "error_na00_etc.log"}}else{print $0}}else{print $0}}' | gzip > ../prefits.gz
+#	gzip -f prefits.0 PR4.tmp
+#------------------------------------------------------------------
+#
+# FILTERING ATTEMPT #3 (Second half Dec. 2016): To try again sat. clocks computed in the regional network, ensuring in a simple way (filtering prefits from ../../expected_vs_observed_satellite_visibility/yy_mm_dd_itsec_prn_common-obs-w-refrec or maybe in a more exigent way from ./../expected_vs_observed_satellite_visibility/yy_mm_dd_itsec_prn_common-obs-w-all)
+#
+# ESTOY AQUI 201612_17
+#
+	echo 2
+	echo
+	echo "REFERENCE-RECEIVER way of processing the prefits..."
+	echo
+	if ($nviews_min_per_sat_in_common_with_refrec == 0) then
+		echo 3
+		#zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_0.gz
+#
+# To guarantee that the satellite clocks are properly estimated / removed, only the satellites observed from the reference receiver are considered
+#
+		if ( $cycle_slip_double_check_rec_cent_preLc == "y" ) then
+			zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | gawk -v n_nonrefrec=$n_nonrefrec -v nviews_min_per_sat_in_common_with_refrec=$nviews_min_per_sat_in_common_with_refrec -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v4.awk | grep ^PR | sort -k3,3n -k4,4n -k5,5n -k6,6n -k7,7n -k8,8n -k37,37nr -k38,38n -k9,9 -k2,2n | gawk -f ${bindir1}/PRX_2_PRX_w_cycle-slip-double-check_from_per-receiver-centered_Lc_prefits_constancy.awk | gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_0.gz
+		else
+			zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | gawk -v n_nonrefrec=$n_nonrefrec -v nviews_min_per_sat_in_common_with_refrec=$nviews_min_per_sat_in_common_with_refrec -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v4.awk | gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_0.gz
+		endif
+		ln -sf ${PWD}/prefits.nviews_min_per_sat_in_common_with_refrec_0.gz ../prefits.gz
+	else
+		echo 4
+		rm -f y_etc_prn_common-obs-w-refrec.s
+		if (-f ${wkdir}/expected_vs_observed_satellite_visibility/yy_mm_dd_itsec_prn_common-obs-w-refrec) then
+			echo 5
+			if ($nviews_min_per_sat_in_common_with_refrec == "all") then
+				echo 6
+				paste -s ${wkdir}/expected_vs_observed_satellite_visibility/yy_mm_dd_itsec_prn_common-obs-w-all > y_etc_prn_common-obs-w-refrec.s
+			else
+				echo 7
+				paste -s ${wkdir}/expected_vs_observed_satellite_visibility/yy_mm_dd_itsec_prn_common-obs-w-refrec > y_etc_prn_common-obs-w-refrec.s
+			endif
+			echo 8
+			wc -l  y_etc_prn_common-obs-w-refrec.s
+			#echo "PROV.EXIT"
+			#exit -1
+			#zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | tee prefits.0 | gawk 'BEGIN{nviews_min=+"'$nviews_min_per_sat_in_common_with_refrec'";if(nviews_min=="all"){nviews_min0=0}else{nviews_min0=nviews_min};getline < "y_etc_prn_common-obs-w-refrec.s";n=NF/6;for(i=1;i<=n;i++){i1=6*i-5;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;yy=$i1;mo=$i2;dd=$i3;itsec=$i4;prn=$i5;nviews=$i6;if(nviews >= nviews_min0){ii=yy" "mo" "dd" "itsec" "prn;nviews1[ii]=nviews}}}{if(substr($1,1,2)=="PR"){yy=+$3;mo=+$4;dd=+$5;hh=+$6;mi=+$7;isec=int($8+.5);itsec=hh*3600+mi*60+isec;prn=+$2;ii=yy" "mo" "dd" "itsec" "prn;if(length(nviews1[ii])>0){print $0}}else{print $0}}' | gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_${nviews_min_per_sat_in_common_with_refrec}.gz 
+#
+# To guarantee that the satellite clocks are properly estimated / removed, only the satellites observed from the reference receiver are considered
+#
+			if ( $cycle_slip_double_check_rec_cent_preLc == "y" ) then
+				##zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | tee prefits.0 | gawk 'BEGIN{nviews_min=+"'$nviews_min_per_sat_in_common_with_refrec'";if(nviews_min=="all"){nviews_min0=0}else{nviews_min0=nviews_min};getline < "y_etc_prn_common-obs-w-refrec.s";n=NF/6;for(i=1;i<=n;i++){i1=6*i-5;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;yy=$i1;mo=$i2;dd=$i3;itsec=$i4;prn=$i5;nviews=$i6;if(nviews >= nviews_min0){ii=yy" "mo" "dd" "itsec" "prn;nviews1[ii]=nviews}}}{if(substr($1,1,2)=="PR"){yy=+$3;mo=+$4;dd=+$5;hh=+$6;mi=+$7;isec=int($8+.5);itsec=hh*3600+mi*60+isec;prn=+$2;ii=yy" "mo" "dd" "itsec" "prn;if(length(nviews1[ii])>0){print $0}}else{print $0}}' | gawk -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.awk | grep ^PR | sort -k3,3n -k4,4n -k5,5n -k6,6n -k7,7n -k8,8n -k37,37nr -k38,38n -k9,9 -k2,2n | gawk -f ${bindir1}/PRX_2_PRX_w_cycle-slip-double-check_from_per-receiver-centered_Lc_prefits_constancy.awk | gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_${nviews_min_per_sat_in_common_with_refrec}.gz 
+				#zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | tee prefits.0 | gawk 'BEGIN{n_nonrefrec=+"'$n_nonrefrec'";nviews_min=+"'$nviews_min_per_sat_in_common_with_refrec'";if(nviews_min=="all"){nviews_min0=n_nonrefrec}else{nviews_min0=nviews_min};getline < "y_etc_prn_common-obs-w-refrec.s";n=NF/6;for(i=1;i<=n;i++){i1=6*i-5;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;yy=$i1;mo=$i2;dd=$i3;itsec=$i4;prn=$i5;nviews=$i6;if(nviews >= nviews_min0){ii=yy" "mo" "dd" "itsec" "prn;nviews1[ii]=nviews}}}{if(substr($1,1,2)=="PR"){yy=+$3;mo=+$4;dd=+$5;hh=+$6;mi=+$7;isec=int($8+.5);itsec=hh*3600+mi*60+isec;prn=+$2;ii=yy" "mo" "dd" "itsec" "prn;if(length(nviews1[ii])>0){print $0}}else{print $0}}' | gawk -v n_nonrefrec=$n_nonrefrec -v nviews_min_per_sat_in_common_with_refrec=$nviews_min_per_sat_in_common_with_refrec -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v4.awk | grep ^PR | sort -k3,3n -k4,4n -k5,5n -k6,6n -k7,7n -k8,8n -k37,37nr -k38,38n -k9,9 -k2,2n | gawk -f ${bindir1}/PRX_2_PRX_w_cycle-slip-double-check_from_per-receiver-centered_Lc_prefits_constancy.awk | gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_${nviews_min_per_sat_in_common_with_refrec}.gz 
+				zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | tee prefits.0 | gawk 'BEGIN{n_nonrefrec=+"'$n_nonrefrec'";nviews_min=+"'$nviews_min_per_sat_in_common_with_refrec'";if(nviews_min=="all"){nviews_min0=n_nonrefrec}else{nviews_min0=nviews_min};getline < "y_etc_prn_common-obs-w-refrec.s";n=NF/6;for(i=1;i<=n;i++){i1=6*i-5;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;yy=$i1;mo=$i2;dd=$i3;itsec=$i4;prn=$i5;nviews=$i6;if(nviews >= nviews_min0){ii=yy" "mo" "dd" "itsec" "prn;nviews1[ii]=nviews}}}{if(substr($1,1,2)=="PR"){yy=+$3;mo=+$4;dd=+$5;hh=+$6;mi=+$7;isec=int($8+.5);itsec=hh*3600+mi*60+isec;prn=+$2;ii=yy" "mo" "dd" "itsec" "prn;if(length(nviews1[ii])>0){print $0}}else{print $0}}' |  grep ^PR | sort -k3,3n -k4,4n -k5,5n -k6,6n -k7,7n -k8,8n -k37,37nr -k38,38n -k9,9 -k2,2n | gawk -f ${bindir1}/PRX_2_PRX_w_cycle-slip-double-check_from_per-receiver-centered_Lc_prefits_constancy.awk | gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_${nviews_min_per_sat_in_common_with_refrec}.gz 
+			else
+				#zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | tee prefits.0 | gawk 'BEGIN{n_nonrefrec=+"'$n_nonrefrec'";nviews_min=+"'$nviews_min_per_sat_in_common_with_refrec'";if(nviews_min=="all"){nviews_min0=n_nonrefrec}else{nviews_min0=nviews_min};getline < "y_etc_prn_common-obs-w-refrec.s";n=NF/6;for(i=1;i<=n;i++){i1=6*i-5;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;yy=$i1;mo=$i2;dd=$i3;itsec=$i4;prn=$i5;nviews=$i6;if(nviews >= nviews_min0){ii=yy" "mo" "dd" "itsec" "prn;nviews1[ii]=nviews}}}{if(substr($1,1,2)=="PR"){yy=+$3;mo=+$4;dd=+$5;hh=+$6;mi=+$7;isec=int($8+.5);itsec=hh*3600+mi*60+isec;prn=+$2;ii=yy" "mo" "dd" "itsec" "prn;if(length(nviews1[ii])>0){print $0}}else{print $0}}' | gawk -v n_nonrefrec=$n_nonrefrec -v nviews_min_per_sat_in_common_with_refrec=$nviews_min_per_sat_in_common_with_refrec -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v4.awk | gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_${nviews_min_per_sat_in_common_with_refrec}.gz 
+				zcat messages1.input.gz | ${bindir1}/${mi2pre_program} | tee prefits.0 | gawk 'BEGIN{n_nonrefrec=+"'$n_nonrefrec'";nviews_min=+"'$nviews_min_per_sat_in_common_with_refrec'";if(nviews_min=="all"){nviews_min0=n_nonrefrec}else{nviews_min0=nviews_min};getline < "y_etc_prn_common-obs-w-refrec.s";n=NF/6;for(i=1;i<=n;i++){i1=6*i-5;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;yy=$i1;mo=$i2;dd=$i3;itsec=$i4;prn=$i5;nviews=$i6;if(nviews >= nviews_min0){ii=yy" "mo" "dd" "itsec" "prn;nviews1[ii]=nviews}}}{if(substr($1,1,2)=="PR"){yy=+$3;mo=+$4;dd=+$5;hh=+$6;mi=+$7;isec=int($8+.5);itsec=hh*3600+mi*60+isec;prn=+$2;ii=yy" "mo" "dd" "itsec" "prn;if(length(nviews1[ii])>0){print $0}}else{print $0}}' |  gzip > ./prefits.nviews_min_per_sat_in_common_with_refrec_${nviews_min_per_sat_in_common_with_refrec}.gz 
+			endif
+			ln -sf ${PWD}/prefits.nviews_min_per_sat_in_common_with_refrec_${nviews_min_per_sat_in_common_with_refrec}.gz ../prefits.gz
+
+			if ( $prefits_w_fixDDamb_from_prefits == "y" || $prefits_w_fixDDamb_from_prefits == "Y" ) then
+				echo
+				echo "========="
+				echo
+				echo "=> Triple, double differences of prefits and generation of prefits_w_fixDDamb_from_prefits..."
+				echo
+				echo "========="
+				mkdir -p dd_ddd_prefits_and_fixDDamb
+				cd dd_ddd_prefits_and_fixDDamb
+				ln -sf ../prefits.nviews_min_per_sat_in_common_with_refrec_${nviews_min_per_sat_in_common_with_refrec}.gz prefits.gz
+				#${bindir1}/prefits_2_prefits_w_fixDDamb_among_dd_and_ddd_with_plots.scr
+				#${bindir1}/prefits_2_prefits_w_fixDDamb_among_dd_and_ddd_with_plots.v2b.scr $use_dd_prefits_mean_in_postprocessing
+				${bindir1}/prefits_2_prefits_w_fixDDamb_among_dd_and_ddd_with_plots.v3.scr $use_dd_prefits_mean_in_postprocessing
+				#ln -sf ${PWD}/PR4+PR5_w_fixDDamb.gz ../../prefits.gz
+				ln -sf ${PWD}/use_dd_prefits_mean_pp.$use_dd_prefits_mean_in_postprocessing/PR6+PR5_w_fixDDamb.gz ../../prefits.gz
+			endif
+
+		else
+			echo 9
+			echo "ERROR: refrec != _ and not existing file "${wkdir}/expected_vs_observed_satellite_visibility/yy_mm_dd_itsec_prn_common-obs-w-refrec
+			exit -1
+		endif
+	endif
+endif
+echo 10
+ls -l ../../prefits.gz
+
+#echo "PROV.EXIT"
+#exit -1
+#
+#if ( $bi_bw_bc_link == "y" || $bi_bw_bc_link == "Y" ) then
+#	zcat messages1.input.gz |  ${bindir1}/$mi2pre_program | tee prefits.0 | gawk -v sigma_constraint=$sigma_constraint_bc_bi_bw_meters -v kona_min=$kona_min_constraint_bc_bi_bw -v tsec0_constraint_bwc_bc_bi=$tsec0_constraint_bwc_bc_bi -f ${bindir1}/pr2_to_pr2_Bw_vs_Bc_and_Bi_constraints.v3.awk | gzip > ../prefits.1.gz
+#else
+#	zcat messages1.input.gz |  ${bindir1}/$mi2pre_program | tee prefits.0 | grep ^PR2 | gzip > ../prefits.1.gz
+#endif
+#ls -l ../prefits.1.gz
+
+if ($run_level_end == "generating_prefits") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+analyzing_prefits_phase_cont_arc_id_vs_time:
+echo
+echo "============================="
+echo
+echo '9b. Analyzing prefits: '
+echo "=> Phase continuous arc id vs time:"
+echo
+echo "============================="
+cd ${wkdir}/prefits
+
+#echo "PROVISIONAL skip to vtec_vs_ionex"
+#goto vtec_vs_ionex
+echo
+echo
+mkdir -p ${wkdir}/prefits/analyzing/phase_cont_arc_id_vs_time
+cd ${wkdir}/prefits/analyzing/phase_cont_arc_id_vs_time
+ln -sf ../../prefits.gz .
+rm -f rec_time-of-day_narch.??.??.??.prn??
+zgrep ^PR prefits.gz | gawk '{if($37==2){prnfile=sprintf("rec_time-of-day_narch.%02d.%02d.%02d.prn%02d",$3,$4,$5,$2);print $9,$6,$7,$8,$42 > prnfile}}'
+zgrep ^PR prefits.gz | gawk '{if($37==2){recfile=sprintf("prn_time-of-day_narch.%02d.%02d.%02d.rec_%s",$3,$4,$5,$9);print $2,$6,$7,$8,$42 > recfile}}'
+zgrep ^PR prefits.gz | gawk '{if($37==2){allfile=sprintf("prn_time-of-day_narch.%02d.%02d.%02d.rec_ALL",$3,$4,$5);print $2,$6,$7,$8,$42,$9 > allfile}}'
+#zgrep ^PR prefits.gz | gawk '{print $2,$6,$7,$8,$42 > "prn_time-of-day_narch.rec"$9}'
+foreach prnfile ( rec_time-of-day_narch.??.??.??.prn?? prn_time-of-day_narch.??.??.??.rec_???? prn_time-of-day_narch.??.??.??.rec_ALL)
+	echo $prnfile
+	sort -k2,2n -k3,3n -k4,4n $prnfile | uniq > $prnfile.s
+	wc -l $prnfile*
+	sed s/PRNFILE/${prnfile}.s/g ${templatesdir1}/narch_vs_time_plotfile_for_prn.$typical_plot_behaviour.gnu.org >${prnfile}.gnu
+	gnuplot ${prnfile}.gnu
+end
+
+echo
+wc -l *_time-of-day_narch*.s
+echo
+
+if ($run_level_end == "analyzing_prefits_phase_cont_arc_id_vs_time") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+
+
+generating_messages_output:
+echo
+echo "============================="
+echo
+echo '10. Generating messages_output'
+echo
+echo "============================="
+
+mkdir -p ${wkdir}/messages_output/org
+cd ${wkdir}/messages_output/org
+
+#set n_nonrefrec = `ls ../../expected_vs_observed_satellite_visibility/OB1_????_${yymodd} | grep -v ${refrec} | wc -l`
+set n_nonrefrec = `ls ../../expected_vs_observed_satellite_visibility/OB1_????_??-??-?? | grep -v ${refrec} | gawk -F"_" '{print $(NF-1)}' | sort -u | wc -l`
+echo "(c) n_nonrefrec = "$n_nonrefrec
+
+
+rm -f ../messages1.output.gz
+
+#if(-f ../../prefits_w_part_DDamb_fixed.gz)then
+#	ln -s ../../prefits_w_part_DDamb_fixed.gz prefits.gz
+#else
+ln -sf ../../prefits/prefits.gz .
+#endif
+ls -l prefits.gz
+
+ln -sf ../../voxels_definition/c.pri .
+ls -l c.pri
+
+cp -p $pre2mo_nml  ${pre2mo_program}.nml
+ls -l ${PWD}/${pre2mo_program}.nml
+
+if ( ! -f ${PWD}/${pre2mo_program}.nml ) then
+        echo "ERROR: Non existing file "${pre2mo_program}.nml
+        echo "Please check nml and re-run"
+        exit -1
+endif
+
+#zgrep ^PR2 prefits.gz | ${bindir1}/${pre2mo_program} | gzip > ../messages1.output.gz
+zgrep ^PR prefits.gz | ${bindir1}/${pre2mo_program} | gzip > ../messages1.output.gz
+ls -l ../messages1.output.gz
+
+if ($run_level_end == "generating_messages_output") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+
+generating_messages_output_after_removing_filter_postfit_outliers:
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+	echo
+	echo "============================="
+	echo
+	echo '10-2 Generating messages_output after removing postfit residual outliers'
+	echo
+	echo "============================="
+
+	mkdir -p ${wkdir}/messages_output$extout/org
+	cd ${wkdir}/messages_output$extout/org
+
+	#set n_nonrefrec = `ls ../../expected_vs_observed_satellite_visibility/OB1_????_${yymodd} | grep -v ${refrec} | wc -l`
+	set n_nonrefrec = `ls ../../expected_vs_observed_satellite_visibility/OB1_????_??-??-?? | grep -v ${refrec} | gawk -F"_" '{print $(NF-1)}' | sort -u | wc -l`
+	echo "(d) n_nonrefrec = "$n_nonrefrec
+
+
+	if ( -f ../../messages_output/messages1.output.gz ) then
+		ln -sf ../../messages_output/messages1.output.gz ./mo.0.gz
+		ls -l mo.0.gz
+	else
+		echo "ERROR: non-existing messages.output.gz"
+	endif
+
+	rm -f ../messages1.output.gz
+
+#'POF ',iprn1,iyy0,imo0,ida0,iho0,imi0,sec0,k11,j11,postfit1,kie,irec1,reclst(irec1),sele(irec1,iprn1),iyear0,idoy0,tsecday0,tdjmobs0
+	rm -f pof.out.tmp pof.tmp
+	zgrep ^POF mo.0.gz | tee pof.tmp | gawk 'BEGIN{pofres_max2["2_3"]=+"'$pofres_Lc_max'"^2;pofres_max2["1_3"]=+"'$pofres_Pc_max'"^2;pofres_max2["2_4"]=+"'$pofres_Li_max'"^2;pofres_max2["1_4"]=+"'$pofres_Pi_max'"^2;pofres_max2["2_6"]=+"'$pofres_MW_max'"^2;}{k=$9;j=$10;ii=k"_"j;pofres=$11;pofres2=pofres^2;prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$14;ele=$15;year=$16;doy=$17;tsecday=$18;tdjm=$19;if(pofres2 >= pofres_max2[ii]){print $0 > "pof.out.tmp";ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;print ii1 > "pof.out"}}'
+	paste -s pof.out > pof.out.s
+	wc -l pof.tmp pof.out.tmp pof.out pof.out.s
+
+	ln -sf ../../prefits/prefits.gz ./pre.0.gz
+	ls -l pre.0.gz
+
+#'PR2 ',iprn,iyy,imo,ida,iho,imi,sec,
+#     1      rec,irec,kind_rec,nobs,(recxyz(i),i=1,3),(satxyz(i),i=1,3),
+#     1      xinitial_sigma2_xyz_rec_m2,sigma2_dXYZ_m2_per_hour,
+#     1      slonrec0,slatrec0,shrec0,
+#     1           elatrec0,ehrec0,
+#     1           sele0,eele0,eazi0,
+#     1           hionokm1,xmapping_iono,
+#     1           xraion,xlation,xlonion,
+#     1           rasun,decsun,xlonsun,
+#     1      k,j,prefit_gps(k,j),sigma_pre1,
+#     1      cycleslip1,narch11,nunk_pobs_geo(k,j),
+#     1      (id_pobs(k,j,i),a_pobs(k,j,i),xref_pobs(k,j,i),
+#     1      i=1,nunk_pobs_geo(k,j)),isv
+	rm -f pre.out.log prefits${extout}.0*
+if ($refrec == "_") then
+#
+# No reference receiver: undifference processing assumed
+#
+	#zcat pre.0.gz | gawk 'BEGIN{getline < "pof.out.s";n=NF;for(i=1;i<=n;i++){out[$i]="Yes"}}{if($1=="PR2"){prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$9;k=$37;j=$38;ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;if(length(out[ii1])==0){print $0}else{print "WARNING:_record_rejected_(postfit_marked_as_outlier): "$0 >> "pre.out.log"}}else{print $0}}' | gzip > ../../prefits/prefits${extout}.gz
+	zcat pre.0.gz | gawk 'BEGIN{getline < "pof.out.s";n=NF;for(i=1;i<=n;i++){out[$i]="Yes"}}{if(substr($1,1,2)=="PR"){prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$9;k=$37;j=$38;ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;if(length(out[ii1])==0){print $0}else{print "WARNING:_record_rejected_(postfit_marked_as_outlier): "$0 >> "pre.out.log"}}else{print $0}}' | gzip > ../../prefits/prefits${extout}.gz
+else
+#
+# Checking / filtering PR2 availability (1 obs. from ref. rec. and at least 1 no-ref.rec. obs. per type of measurement and satellite available) for differential processing
+#
+	##zcat pre.0.gz | gawk 'BEGIN{getline < "pof.out.s";n=NF;for(i=1;i<=n;i++){out[$i]="Yes"}}{if($1=="PR2"){prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$9;k=$37;j=$38;ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;if(length(out[ii1])==0){print $0}else{print "WARNING:_record_rejected_(postfit_marked_as_outlier): "$0 >> "pre.out.log"}}else{print $0}}' | tee prefits${extout}.0 | gawk -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.awk | gzip > ../../prefits/prefits${extout}.gz
+	#zcat pre.0.gz | gawk 'BEGIN{getline < "pof.out.s";n=NF;for(i=1;i<=n;i++){out[$i]="Yes"}}{if(substr($1,1,2)=="PR"){prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$9;k=$37;j=$38;ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;if(length(out[ii1])==0){print $0}else{print "WARNING:_record_rejected_(postfit_marked_as_outlier): "$0 >> "pre.out.log"}}else{print $0}}' | tee prefits${extout}.0 | gawk -v n_nonrefrec=$n_nonrefrec -v nviews_min_per_sat_in_common_with_refrec=$nviews_min_per_sat_in_common_with_refrec -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v4.awk | gzip > ../../prefits/prefits${extout}.gz
+	zcat pre.0.gz | gawk 'BEGIN{getline < "pof.out.s";n=NF;for(i=1;i<=n;i++){out[$i]="Yes"}}{if(substr($1,1,2)=="PR"){prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$9;k=$37;j=$38;ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;if(length(out[ii1])==0){print $0}else{print "WARNING:_record_rejected_(postfit_marked_as_outlier): "$0 >> "pre.out.log"}}else{print $0}}' | tee prefits${extout}.0 | gzip > ../../prefits/prefits${extout}.gz
+	gzip -f prefits${extout}.0
+endif
+
+	zcat ../../prefits/prefits.gz | wc -l
+	zcat ../../prefits/prefits${extout}.gz | wc -l
+	ls -l pre.out.log
+	wc -l pre.out.log
+	#echo "PROV.EXIT"
+	#exit -1
+
+	ln -sf ../../voxels_definition/c.pri .
+	ls -l c.pri
+
+	cp -p $pre2mo_nml  ${pre2mo_program}.nml
+	ls -l ${PWD}/${pre2mo_program}.nml
+
+	ln -sf ../../prefits/prefits${extout}.gz ./prefits.gz
+
+	#zgrep ^PR2 prefits.gz | ${bindir1}/${pre2mo_program} | gzip > ../messages1.output.gz
+	zgrep ^PR prefits.gz | ${bindir1}/${pre2mo_program} | gzip > ../messages1.output.gz
+	ls -l ../messages1.output.gz
+
+endif
+
+if ($run_level_end == "generating_messages_output_after_removing_filter_postfit_outliers") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+generating_messages_output_after_fixing_DDamb_from_filter:
+if ( ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) && $refrec != "_" )then
+	echo
+	echo "============================="
+	echo
+	echo '10-3 Generating messages_output after fixing DDamb from previous filter run'
+	echo
+	echo "============================="
+
+	mkdir -p ${wkdir}/messages_output$extout2/org
+	cd ${wkdir}/messages_output$extout2/org
+
+	#set n_nonrefrec = `ls ../../expected_vs_observed_satellite_visibility/OB1_????_${yymodd} | grep -v ${refrec} | wc -l`
+	set n_nonrefrec = `ls ../../expected_vs_observed_satellite_visibility/OB1_????_??-??-?? | grep -v ${refrec} | gawk -F"_" '{print $(NF-1)}' | sort -u | wc -l`
+	echo "(e) n_nonrefrec = "$n_nonrefrec
+
+
+	set kon_DD = 0
+
+#Changes to avoid the usage of the messages_output after elliminating outliers (see comment above)
+	#if ( -f ../../messages_output$extout/messages1.output.gz ) then
+	if ( -f ../../messages_output/messages1.output.gz ) then
+		ln -sf ../../messages_output/messages1.output.gz ./messages1.output.${kon_DD}.gz
+		#ln -sf ../../messages_output$extout/messages1.output.gz ./messages1.output.${kon_DD}.gz
+		ls -l messages1.output.${kon_DD}.gz
+		rm -f ../messages1.output.gz
+		ln -sf ../../prefits/org/refsat.??-??-?? .
+		ln -sf ../../prefits/org/c.pri .
+		ln -sf ../../prefits/org/sp3e.lst .
+		ln -sf ../../prefits/org/*.sta .
+		ln -sf ../../messages_input/messages1.input.gz .
+		ln -sf ../../GPS_const_status/gpsconsstatus.lst .
+		ln -sf ../../prefits/org/messages1input_2_prefits_v${ver_mi2pre_program}.nml .
+		cp -p $pre2mo_nml  ${pre2mo_program}.nml
+		ls -l ${PWD}/${pre2mo_program}.nml
+	else
+		#echo "ERROR: non-existing input file ../../messages_output"$extout"/messages1.output.gz"
+		echo "ERROR: non-existing input file ../../messages_output/messages1.output.gz"
+		exit -1
+	endif
+
+	rm -rf plots.fixedDDamb.after_filter plots.fixedDDamb.after_filter.[0-9] plots.fixedDDamb.after_filter.[0-9][0-9]
+	rm -rf ddf.??-??-?? ddf.??-??-??.[0-9] ddf.??-??-??.[0-9][0-9] ddf.??-??-??.sum ddf.??-??-??.sum.[0-9] ddf.??-??-??.sum.[0-9][0-9]
+	next_iter_DD:
+
+	ln -sf messages1.output.${kon_DD}.gz messages1.output.gz
+
+	rm -rf plots.fixedDDamb.after_filter ddf.??-??-?? ddf.??-??-??.sum
+	${bindir1}/messages_output_2_DDF_summary_files.scr ../../expected_vs_observed_satellite_visibility ../../prefits/org
+	if( -d plots.fixedDDamb.after_filter)then
+		mv plots.fixedDDamb.after_filter plots.fixedDDamb.after_filter.${kon_DD}
+	endif
+
+	ls -l *.sum
+	foreach ddfile ( ddf.??-??-?? )
+		echo "renaming "$ddfile" as "${ddfile}.${kon_DD}
+		mv $ddfile ${ddfile}.${kon_DD}
+		ln -sf ${ddfile}.${kon_DD} $ddfile
+		mv ${ddfile}.sum ${ddfile}.sum.${kon_DD}
+		#ln -sf ${ddfile}.sum.${kon_DD} ${ddfile}.sum
+		gawk -f ${bindir1}/many_ddf-sum_files_to_joined_ddf-sum_file.awk ${ddfile}.sum.? ${ddfile}.sum.?? | sort -n > ${ddfile}.sum
+		cp -p ${ddfile}.sum ${ddfile}.sum.joined_up_to_${kon_DD}
+		wc -l ${ddfile}.sum.joined_up_to_${kon_DD} ${ddfile}.sum
+	end
+	@ kon_DD ++
+
+	#zcat messages1.input.gz | ${bindir1}/messages1input_2_prefits_v${ver_mi2pre_program} | gzip > ../../prefits/prefits${extout2}.${kon_DD}.gz
+	#zcat messages1.input.gz | ${bindir1}/messages1input_2_prefits_v${ver_mi2pre_program} | tee prefits.0.${kon_DD} | gawk -v n_nonrefrec=$n_nonrefrec -v nviews_min_per_sat_in_common_with_refrec=$nviews_min_per_sat_in_common_with_refrec -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v4.awk | gzip > ../../prefits/prefits${extout2}.${kon_DD}.gz
+	zcat messages1.input.gz | ${bindir1}/messages1input_2_prefits_v${ver_mi2pre_program} | tee prefits.0.${kon_DD} | gzip > ../../prefits/prefits${extout2}.${kon_DD}.gz
+
+	mv messages1input_2_prefits_v${ver_mi2pre_program}.log messages1input_2_prefits_v${ver_mi2pre_program}.${kon_DD}.log
+	ls -l ../../prefits/prefits${extout2}.${kon_DD}.gz
+	echo
+	echo "Number of PR records:"
+	echo " All:"
+	zgrep -c ^PR ../../prefits/prefits${extout2}.${kon_DD}.gz
+	echo " PR5 (fixDDamb from prefits):"
+	zgrep -c ^PR5 ../../prefits/prefits${extout2}.${kon_DD}.gz
+	echo " PR6 with T T (fixDDamb from filter output):"
+	zgrep ^PR6 ../../prefits/prefits${extout2}.${kon_DD}.gz | grep -c " T T "
+
+
+	ln -sf ../../prefits/prefits${extout2}.${kon_DD}.gz ./prefits.gz
+
+	zgrep ^PR prefits.gz | ${bindir1}/${pre2mo_program} | gzip > messages1.output.${kon_DD}.gz
+	mv ${pre2mo_program}.log ${pre2mo_program}.${kon_DD}.log
+
+
+#'POF ',iprn1,iyy0,imo0,ida0,iho0,imi0,sec0,k11,j11,postfit1,kie,irec1,reclst(irec1),sele(irec1,iprn1),iyear0,idoy0,tsecday0,tdjmobs0
+	rm -f pof.out.tmp pof.${kon_DD}.out.tmp pof.${kon_DD}.tmp pof.out pof.${kon_DD}.out pof.out.s
+	zgrep ^POF messages1.output.${kon_DD}.gz | tee pof.${kon_DD}.tmp | gawk 'BEGIN{pofres_max2["2_3"]=+"'$pofres_Lc_max'"^2;pofres_max2["1_3"]=+"'$pofres_Pc_max'"^2;pofres_max2["2_4"]=+"'$pofres_Li_max'"^2;pofres_max2["1_4"]=+"'$pofres_Pi_max'"^2;pofres_max2["2_6"]=+"'$pofres_MW_max'"^2;}{k=$9;j=$10;ii=k"_"j;pofres=$11;pofres2=pofres^2;prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$14;ele=$15;year=$16;doy=$17;tsecday=$18;tdjm=$19;if(pofres2 >= pofres_max2[ii]){print $0 > "pof.out.tmp";ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;print ii1 > "pof.out"}}'
+	cp -p pof.out pof.${kon_DD}.out
+	cp -p pof.out.tmp pof.${kon_DD}.out.tmp
+	paste -s pof.out > pof.out.s
+	wc -l pof.out.tmp pof.out pof.out.s
+
+	echo 
+	echo "WARNING: PROVISIONAL SKIPPING of high |POF| cleaning under DDambFIXING after filter..."
+	echo "This can generate many epochs with lack of observations, in particular from the permanent receiver, which can generate a lack of stability in the relative network processing (clocks, amb.fixing...)..."
+	echo
+#	echo " (a potential bug in prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.awk should be fixed before resuming it, see PRN2 @ tid1 at 02:00:30 and 02:00:00 during DOY 111, 2014)"
+	echo
+	goto jump_after_cleaning
+
+##'PR2 ',iprn,iyy,imo,ida,iho,imi,sec,
+##     1      rec,irec,kind_rec,nobs,(recxyz(i),i=1,3),(satxyz(i),i=1,3),
+##     1      xinitial_sigma2_xyz_rec_m2,sigma2_dXYZ_m2_per_hour,
+##     1      slonrec0,slatrec0,shrec0,
+##     1           elatrec0,ehrec0,
+##     1           sele0,eele0,eazi0,
+##     1           hionokm1,xmapping_iono,
+##     1           xraion,xlation,xlonion,
+##     1           rasun,decsun,xlonsun,
+##     1      k,j,prefit_gps(k,j),sigma_pre1,
+##     1      cycleslip1,narch11,nunk_pobs_geo(k,j),
+##     1      (id_pobs(k,j,i),a_pobs(k,j,i),xref_pobs(k,j,i),
+##     1      i=1,nunk_pobs_geo(k,j)),isv
+	rm -f pre.out.log 
+	rm -f ../../prefits/prefits${extout2}.${kon_DD}.clean.gz
+#
+# Checking / filtering PR2 availability (1 obs. from ref. rec. and at least 1 no-ref.rec. obs. per type of measurement and satellite available) for differential processing
+#
+	#zcat ../../prefits/prefits${extout2}.${kon_DD}.gz | gawk 'BEGIN{getline < "pof.out.s";n=NF;for(i=1;i<=n;i++){out[$i]="Yes"}}{if(substr($1,1,2)=="PR"){prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$9;k=$37;j=$38;ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;if(length(out[ii1])==0){print $0}else{print "WARNING:_record_rejected_(postfit_marked_as_outlier): "$0 >> "pre.out.log"}}else{print $0}}' | tee prefits${extout2}.${kon_DD}.clean.0 | gawk -v n_nonrefrec=$n_nonrefrec -v nviews_min_per_sat_in_common_with_refrec=$nviews_min_per_sat_in_common_with_refrec -f ${bindir1}/prefits_2_prefits_with_at_least_one_refrec_and_one_no-refrec_per_epoch_when_diff_proc.v4.awk | gzip > ../../prefits/prefits${extout2}.${kon_DD}.clean.gz
+	zcat ../../prefits/prefits${extout2}.${kon_DD}.gz | gawk 'BEGIN{getline < "pof.out.s";n=NF;for(i=1;i<=n;i++){out[$i]="Yes"}}{if(substr($1,1,2)=="PR"){prn=$2;yy=$3;mo=$4;da=$5;ho=$6;mi=$7;isec=int($8+.5);rec=$9;k=$37;j=$38;ii1=prn"_"yy"_"mo"_"da"_"ho"_"mi"_"isec"_"rec"_"k"_"j;if(length(out[ii1])==0){print $0}else{print "WARNING:_record_rejected_(postfit_marked_as_outlier): "$0 >> "pre.out.log"}}else{print $0}}' | tee prefits${extout2}.${kon_DD}.clean.0 | gzip > ../../prefits/prefits${extout2}.${kon_DD}.clean.gz
+	gzip -f prefits${extout2}.${kon_DD}.clean.0
+
+	ln -sf ../../prefits/prefits${extout2}.${kon_DD}.clean.gz ./prefits.gz
+
+	zgrep ^PR prefits.gz | ${bindir1}/${pre2mo_program} | gzip > messages1.output.${kon_DD}.clean.gz
+	mv ${pre2mo_program}.log ${pre2mo_program}.${kon_DD}.clean.log
+
+jump_after_cleaning:
+	if( $kon_DD < $max_number_iterations_to_fixDDamb_from_filter )then
+		goto next_iter_DD
+	endif
+	#ln -sf ${PWD}/messages1.output.${kon_DD}.clean.gz ../messages1.output.gz
+	ln -sf ${PWD}/messages1.output.${kon_DD}.gz ../messages1.output.gz
+
+endif
+
+if ($run_level_end == "generating_messages_output_after_fixing_DDamb_from_filter") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+generating_gipsy_output:
+echo
+echo "============================="
+echo
+echo '10-4 Generating Gipsy_output'
+echo
+echo "============================="
+mkdir -p ${wkdir}/messages_gipsy/org
+cd ${wkdir}/messages_gipsy/org
+
+#rm -f ../messages_gipsy.gz
+
+
+rm -f temp*
+ln -sf ../../rec_ALL.sta .
+ln -sf ../../rinex_files/???????0.??d.Z .
+
+
+set djm = $djm0
+
+echo $djm $djm1
+
+while ( $djm <= $djm1 )
+
+	set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+	echo $year
+	set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+	echo $doy
+
+
+	${bindir_local}/rnx2eli.scr
+	cat temp.eli | sort -u > temp.eli.u
+	echo $year $doy $itropo_model
+	${bindir_local}/rec_year_doy_2_ztd_gipsy.v3.scr $year $doy $itropo_model  
+
+	@ djm ++
+#echo "PROV.EXIT in iono"
+#exit -1
+end
+
+
+if($run_level_end == "generating_gipsy_output")then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+
+analyzing_messages_output_DDDprefits_Lc:
+echo
+echo "============================="
+echo
+echo '10b. Analyzing messages_output: '
+echo "=> Triple difference of prefit Lc residuals:"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+#echo "PROVISIONAL skip to vtec_vs_ionex"
+#goto vtec_vs_ionex
+echo
+echo
+mkdir -p ${wkdir}/messages_output/analyzing/ddd_prefits_Lc
+cd ${wkdir}/messages_output/analyzing/ddd_prefits_Lc
+ln -sf ../../messages1.output.gz .
+${bindir1}/messages1output_2_plots.dddlc_prefits.rec.scr
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+	cd ${wkdir}/messages_output${extout}
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/ddd_prefits_Lc
+	cd ${wkdir}/messages_output${extout}/analyzing/ddd_prefits_Lc
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.dddlc_prefits.rec.scr
+endif
+
+if ($run_level_end == "analyzing_messages_output_DDDprefits_Lc") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+analyzing_messages_output_DDNw_from_BcBi_vs_from_MW:
+echo
+echo "============================="
+echo
+echo '10c. Analyzing messages_output: '
+echo "=> Double difference of widelane ambiguity: from Bc and Bi vs. from codes"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+mkdir -p ${wkdir}/messages_output/analyzing/ddNw
+cd ${wkdir}/messages_output/analyzing/ddNw
+ln -sf ../../messages1.output.gz .
+#${bindir1}/messages1output_2_plots.ddambiguities.scr view
+${bindir1}/messages1output_2_plots.ddambiguities.scr $typical_plot_behaviour
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/ddNw
+	cd ${wkdir}/messages_output${extout}/analyzing/ddNw
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.ddambiguities.scr $typical_plot_behaviour
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_DDNw_from_BcBi_vs_from_MW") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+analyzing_messages_output_actual_fixing_ambiguity_rates:
+echo
+echo "============================="
+echo
+echo '10d. Analyzing messages_output: '
+echo "=> Actual ambiguity fixing rate, for double differences of both widelane and shortlane ambiguities"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+mkdir -p ${wkdir}/messages_output/analyzing/fix_amb_rates
+cd ${wkdir}/messages_output/analyzing/fix_amb_rates
+ln -sf ../../messages1.output.gz .
+#${bindir1}/messages1output_2_plots.ddambiguities.scr $typical_plot_behaviour
+${bindir1}/messages1output_2_plots.actual_fixing_ambiguity_rates.v2b.scr $typical_plot_behaviour
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/fix_amb_rates
+	cd ${wkdir}/messages_output${extout}/analyzing/fix_amb_rates
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.actual_fixing_ambiguity_rates.v2b.scr $typical_plot_behaviour
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_actual_fixing_ambiguity_rates") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+
+analyzing_messages_output_VTEC_vs_GIM_VTEC:
+echo
+echo "============================="
+echo
+echo '10e. Analyzing messages_output: '
+echo "=> VTEC vs. GIM VTEC in IONEX format"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+#vtec_vs_ionex:
+mkdir -p ${wkdir}/messages_output/analyzing/vtec_vs_ionex
+cd ${wkdir}/messages_output/analyzing/vtec_vs_ionex
+ln -sf ../../messages1.output.gz .
+#${bindir1}/messages1output_2_plots.vtec_vs_ionex.v4.scr 0.3 uqrg view
+#${bindir1}/messages1output_2_plots.vtec_vs_ionex.v4b.scr 0.3 uqrg view
+#${bindir1}/messages1output_2_plots.vtec_vs_ionex.v4b.scr 0.3 uqrg $typical_plot_behaviour
+${bindir1}/messages1output_2_plots.vtec_vs_ionex.v4c.scr 0.3 uqrg $typical_plot_behaviour
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+
+	cd ${wkdir}/messages_output${extout}
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/vtec_vs_ionex
+	cd ${wkdir}/messages_output${extout}/analyzing/vtec_vs_ionex
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.vtec_vs_ionex.v4c.scr 0.3 uqrg $typical_plot_behaviour
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_VTEC_vs_GIM_VTEC") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+#echo "PROV.EXIT"
+#exit -1
+
+analyzing_messages_output_receiver_coordinates:
+echo
+echo "============================="
+echo
+echo '10f. Analyzing messages_output: '
+echo "=> Receiver Coordinates"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+mkdir -p ${wkdir}/messages_output/analyzing/receiver_coordinates
+cd ${wkdir}/messages_output/analyzing/receiver_coordinates
+ln -sf ../../messages1.output.gz .
+
+rm -f XYZ.estimated.all
+zcat messages1.output.gz | gawk '{if(length($0)>4){if(substr($0,2,3)=="Rx ")print $0}}' | gawk -f ${bindir1}/one-receiver_Rx_messages_2_XYZ.v3b.awk > XYZ.estimated.all
+wc -l XYZ.estimated.all
+${bindir1}/xyz_to_tot_and_eli.v2.scr XYZ.estimated.all
+wc -l XYZ.estimated.all.eli
+gawk 'BEGIN{print "Longitude, Latitude, Height"}{print $2","$3","$4}' XYZ.estimated.all.eli > XYZ.estimated.all.csv
+wc -l XYZ.estimated.all.csv
+gpsbabel -i unicsv -f XYZ.estimated.all.csv -x transform,rte=wpt -o gpx -F XYZ.estimated.all.gpx
+ls -ltr XYZ.estimated.all*
+
+#echo "PROV.EXIT"
+#exit -1
+
+${bindir1}/messages1output_2_plots.receiver_coordinates.v3.scr $typical_plot_behaviour
+
+set djm = $djm0 
+
+while ( $djm <= $djm1 )
+
+	set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+	set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+	set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+	set reclst = `ls ?Rx.${year}.${doyf}.???? | gawk '{l=length($0);print substr($0,l-3,4)}' | sort | uniq`
+	echo
+	echo $reclst
+	rm -f XYZ.${year}.${doyf}.final 
+	foreach rec ($reclst)
+       		rm -f _Rx.${year}.${doyf}.$rec.final XYZ.${year}.${doyf}.$rec.final
+	        tail -q -n 1 ?Rx.${year}.${doyf}.$rec | tee _Rx.${year}.${doyf}.$rec.final | gawk -f ${bindir1}/one-receiver_Rx_messages_2_XYZ.v3.awk > XYZ.${year}.${doyf}.$rec.final
+		cat XYZ.${year}.${doyf}.$rec.final >> XYZ.${year}.${doyf}.final
+	end
+	wc -l XYZ.${year}.${doyf}.final
+
+	@ djm ++
+end
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/receiver_coordinates
+	cd ${wkdir}/messages_output${extout}/analyzing/receiver_coordinates
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.receiver_coordinates.v3.scr $typical_plot_behaviour
+	
+	set djm = $djm0 
+	
+	while ( $djm <= $djm1 )
+	
+		set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+		set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+	
+		set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+		set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	
+		set reclst = `ls ?Rx.${year}.${doyf}.???? | gawk '{l=length($0);print substr($0,l-3,4)}' | sort | uniq`
+		echo
+		echo $reclst
+		rm -f XYZ.${year}.${doyf}.final
+		foreach rec ($reclst)
+	       		rm -f _Rx.${year}.${doyf}.$rec.final XYZ.${year}.${doyf}.$rec.final
+		        tail -q -n 1 ?Rx.${year}.${doyf}.$rec | tee _Rx.${year}.${doyf}.$rec.final | gawk -f ${bindir1}/one-receiver_Rx_messages_2_XYZ.v3.awk > XYZ.${year}.${doyf}.$rec.final
+			cat XYZ.${year}.${doyf}.$rec.final >> XYZ.${year}.${doyf}.final
+		end
+		wc -l XYZ.${year}.${doyf}.final
+	
+		@ djm ++
+	end
+
+endif
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout2}
+	
+	mkdir -p ${wkdir}/messages_output${extout2}/analyzing/receiver_coordinates
+	cd ${wkdir}/messages_output${extout2}/analyzing/receiver_coordinates
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.receiver_coordinates.v3.scr $typical_plot_behaviour
+	
+	set djm = $djm0 
+	
+	while ( $djm <= $djm1 )
+	
+		set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+		set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+	
+		set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+		set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	
+		set reclst = `ls ?Rx.${year}.${doyf}.???? | gawk '{l=length($0);print substr($0,l-3,4)}' | sort | uniq`
+		echo
+		echo $reclst
+		rm -f XYZ.${year}.${doyf}.final
+		foreach rec ($reclst)
+	       		rm -f _Rx.${year}.${doyf}.$rec.final XYZ.${year}.${doyf}.$rec.final
+		        tail -q -n 1 ?Rx.${year}.${doyf}.$rec | tee _Rx.${year}.${doyf}.$rec.final | gawk -f ${bindir1}/one-receiver_Rx_messages_2_XYZ.v3.awk > XYZ.${year}.${doyf}.$rec.final
+			cat XYZ.${year}.${doyf}.$rec.final >> XYZ.${year}.${doyf}.final
+		end
+		wc -l XYZ.${year}.${doyf}.final
+	
+		@ djm ++
+	end
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_receiver_coordinates") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+
+analyzing_messages_output_dcbs:
+echo
+echo "============================="
+echo
+echo '10g. Analyzing messages_output: '
+echo "=> Receiver and Transmitter DCBs"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+mkdir -p ${wkdir}/messages_output/analyzing/dcbs
+cd ${wkdir}/messages_output/analyzing/dcbs
+ln -sf ../../messages1.output.gz .
+${bindir1}/messages1output_2_plots.dcbs.scr r $typical_plot_behaviour
+${bindir1}/messages1output_2_plots.dcbs.scr t $typical_plot_behaviour
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/dcbs
+	cd ${wkdir}/messages_output${extout}/analyzing/dcbs
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.dcbs.scr r $typical_plot_behaviour
+	${bindir1}/messages1output_2_plots.dcbs.scr t $typical_plot_behaviour
+
+endif
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout2}
+	mkdir -p ${wkdir}/messages_output${extout2}/analyzing/dcbs
+	cd ${wkdir}/messages_output${extout2}/analyzing/dcbs
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.dcbs.scr r $typical_plot_behaviour
+	${bindir1}/messages1output_2_plots.dcbs.scr t $typical_plot_behaviour
+
+endif
+
+
+if ($run_level_end == "analyzing_messages_output_dcbs") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+
+analyzing_messages_output_satellite_clocks_vs_IGS:
+echo
+echo "============================="
+echo
+echo '10h. Analyzing messages_output: '
+echo "=> Satellite clocks vs. IGS values"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+set djm = $djm0 
+
+sat_clocks_vs_igs:
+mkdir -p ${wkdir}/messages_output/analyzing/sat_clocks_vs_igs
+cd ${wkdir}/messages_output/analyzing/sat_clocks_vs_igs
+ln -sf ../../messages1.output.gz .
+#ln -sf ../../../reference_receiver.sta .
+rm -rf reference_receiver.sta
+cp -p ${wkdir}/refrec.sta reference_receiver.sta
+ls -l reference_receiver.sta
+
+
+while ( $djm <= $djm1 )
+
+	set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+	set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+	set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+	#echo ${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy view
+	#${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy view
+	echo ${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy $typical_plot_behaviour
+	${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy $typical_plot_behaviour
+
+	@ djm ++
+
+#echo "PROV.EXIT"
+#exit -1
+end
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	
+	set djm = $djm0 
+	
+	sat_clocks_vs_igs:
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/sat_clocks_vs_igs
+	cd ${wkdir}/messages_output${extout}/analyzing/sat_clocks_vs_igs
+	ln -sf ../../messages1.output.gz .
+	rm -rf reference_receiver.sta
+	cp -p ${wkdir}/refrec.sta reference_receiver.sta
+	ls -l reference_receiver.sta
+	
+	while ( $djm <= $djm1 )
+	
+		set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+		set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+	
+		set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+		set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	
+		echo ${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy $typical_plot_behaviour
+		${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy $typical_plot_behaviour
+	
+		@ djm ++
+	
+	#echo "PROV.EXIT"
+	#exit -1
+	end
+endif
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout2}
+	
+	set djm = $djm0 
+	
+	sat_clocks_vs_igs:
+	mkdir -p ${wkdir}/messages_output${extout2}/analyzing/sat_clocks_vs_igs
+	cd ${wkdir}/messages_output${extout2}/analyzing/sat_clocks_vs_igs
+	ln -sf ../../messages1.output.gz .
+	rm -rf reference_receiver.sta
+	cp -p ${wkdir}/refrec.sta reference_receiver.sta
+	ls -l reference_receiver.sta
+	
+	while ( $djm <= $djm1 )
+	
+		set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+		set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+	
+		set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+		set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	
+		echo ${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy $typical_plot_behaviour
+		${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy $typical_plot_behaviour
+	
+		@ djm ++
+	
+	#echo "PROV.EXIT"
+	#exit -1
+	end
+endif
+
+if ($run_level_end == "analyzing_messages_output_satellite_clocks_vs_IGS") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+analyzing_messages_output_tropospheric_estimation_vs_IGS:
+echo
+echo "============================="
+echo
+echo '10i. Analyzing messages_output: '
+echo "=> Zenith Tropospheric delay vs. IGS values"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+set djm = $djm0 
+
+mkdir -p ${wkdir}/messages_output/analyzing/ztd_vs_igs
+cd ${wkdir}/messages_output/analyzing/ztd_vs_igs
+ln -sf ../../messages1.output.gz .
+rm -rf reference_receiver.sta
+cp -p ${wkdir}/refrec.sta reference_receiver.sta
+ls -l reference_receiver.sta
+
+echo $djm $djm1
+
+while ( $djm <= $djm1 )
+
+	set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+	set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+	set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+	#echo ${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy $typical_plot_behaviour
+	#${bindir1}/messages1output_2_plots.clocks_satellites_wartk_vs_igs.v2b.scr $year $doy $typical_plot_behaviour
+	
+	#echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1g.scr $year $doy NEWIGS forward $typical_plot_behaviour
+	#${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1g.scr $year $doy NEWIGS forward $typical_plot_behaviour
+	echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1g.scr $year $doy NEWIGS forward $view_yn
+	${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1g.scr $year $doy NEWIGS forward $view_yn
+
+	@ djm ++
+
+#echo "PROV.EXIT"
+#exit -1
+end
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	
+	set djm = $djm0 
+	
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/ztd_vs_igs
+	cd ${wkdir}/messages_output${extout}/analyzing/ztd_vs_igs
+	ln -sf ../../messages1.output.gz .
+	rm -rf reference_receiver.sta
+	cp -p ${wkdir}/refrec.sta reference_receiver.sta
+	ls -l reference_receiver.sta
+	
+	echo $djm $djm1
+	
+	while ( $djm <= $djm1 )
+	
+		set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+		set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+	
+		set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+		set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	
+		echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1g.scr $year $doy NEWIGS forward $view_yn
+		${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1g.scr $year $doy NEWIGS forward $view_yn
+	
+		@ djm ++
+	
+	#echo "PROV.EXIT"
+	#exit -1
+	end
+
+endif
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout2}
+	
+	set djm = $djm0 
+	
+	mkdir -p ${wkdir}/messages_output${extout2}/analyzing/ztd_vs_igs
+	cd ${wkdir}/messages_output${extout2}/analyzing/ztd_vs_igs
+	ln -sf ../../messages1.output.gz .
+	rm -rf reference_receiver.sta
+	cp -p ${wkdir}/refrec.sta reference_receiver.sta
+	ls -l reference_receiver.sta
+	
+	echo $djm $djm1
+	
+	while ( $djm <= $djm1 )
+	
+		set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+		set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+	
+		set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+		set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	
+		echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1g.scr $year $doy NEWIGS forward $view_yn
+		${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1g.scr $year $doy NEWIGS forward $view_yn
+	
+		@ djm ++
+	
+	#echo "PROV.EXIT"
+	#exit -1
+	end
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_tropospheric_estimation_vs_IGS") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+analyzing_messages_output_tropospheric_estimation_vs_IGS_Gipsy:
+echo
+echo "============================="
+echo
+echo '10ib. Analyzing messages_output: '
+echo "=> Zenith Tropospheric delay vs. IGS and Gipsy values"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+set djm = $djm0
+
+mkdir -p ${wkdir}/messages_output/analyzing/ztd_vs_igs_gipsy
+cd ${wkdir}/messages_output/analyzing/ztd_vs_igs_gipsy
+ln -sf ../../messages1.output.gz .
+rm -rf reference_receiver.sta
+cp -p ${wkdir}/refrec.sta reference_receiver.sta
+ls -l reference_receiver.sta
+
+ln -sf ../../../messages_gipsy/org/????_???????/*_ZTD_* .
+
+echo $djm $djm1
+
+while ( $djm <= $djm1 )
+
+        set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+        set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+        set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+        set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+
+        echo ${bindir_local}/messages1output_2_plots.tropo_wartk_vs_igs_and_gipsy.scr $year $doy NEWIGS forward $view_yn $itropo_model
+        ${bindir_local}/messages1output_2_plots.tropo_wartk_vs_igs_and_gipsy.scr $year $doy NEWIGS forward $view_yn $itropo_model
+
+        @ djm ++
+
+#echo "PROV.EXIT"
+#exit -1
+end
+
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+        cd ${wkdir}/messages_output${extout}
+
+        set djm = $djm0
+
+        mkdir -p ${wkdir}/messages_output${extout}/analyzing/ztd_vs_igs_gipsy
+        cd ${wkdir}/messages_output${extout}/analyzing/ztd_vs_igs_gipsy
+        ln -sf ../../messages1.output.gz .
+        rm -rf reference_receiver.sta
+        cp -p ${wkdir}/refrec.sta reference_receiver.sta
+        ls -l reference_receiver.sta
+
+	ln -sf ../../../messages_gipsy/org/????_???????/*_ZTD_* .
+
+
+        echo $djm $djm1
+
+        while ( $djm <= $djm1 )
+
+                set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+                set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+                set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+                set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+                echo ${bindir_local}/messages1output_2_plots.tropo_wartk_vs_igs_and_gipsy.scr $year $doy NEWIGS forward $view_yn $itropo_model
+                ${bindir_local}/messages1output_2_plots.tropo_wartk_vs_igs_and_gipsy.scr $year $doy NEWIGS forward $view_yn $itropo_model
+
+                @ djm ++
+
+        #echo "PROV.EXIT"
+        #exit -1
+        end
+
+endif
+
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+        cd ${wkdir}/messages_output${extout2}
+
+        set djm = $djm0
+
+        mkdir -p ${wkdir}/messages_output${extout2}/analyzing/ztd_vs_igs_gipsy
+        cd ${wkdir}/messages_output${extout2}/analyzing/ztd_vs_igs_gipsy
+        ln -sf ../../messages1.output.gz .
+        rm -rf reference_receiver.sta
+        cp -p ${wkdir}/refrec.sta reference_receiver.sta
+        ls -l reference_receiver.sta
+
+	ln -sf ../../../messages_gipsy/org/????_???????/*_ZTD_* .
+
+
+        echo $djm $djm1
+
+        while ( $djm <= $djm1 )
+
+                set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+                set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+                set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+                set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+                echo ${bindir_local}/messages1output_2_plots.tropo_wartk_vs_igs_and_gipsy.scr $year $doy NEWIGS forward $view_yn $itropo_model
+                ${bindir_local}/messages1output_2_plots.tropo_wartk_vs_igs_and_gipsy.scr $year $doy NEWIGS forward $view_yn $itropo_model
+
+                @ djm ++
+
+        #echo "PROV.EXIT"
+        #exit -1
+        end
+
+endif
+
+
+if($run_level_end == "analyzing_messages_output_tropospheric_estimation_vs_IGS_Gipsy")then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+analyzing_messages_output_tropospheric_estimation_vs_COD:
+echo
+echo "============================="
+echo
+echo '10i. Analyzing messages_output: '
+echo "=> Zenith Tropospheric delay vs. CODE values"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+set djm = $djm0
+
+mkdir -p ${wkdir}/messages_output/analyzing/ztd_vs_cod
+cd ${wkdir}/messages_output/analyzing/ztd_vs_cod
+ln -sf ../../messages1.output.gz .
+rm -rf reference_receiver.sta
+cp -p ${wkdir}/refrec.sta reference_receiver.sta
+ls -l reference_receiver.sta
+
+echo $djm $djm1
+
+while ( $djm <= $djm1 )
+
+        set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+        set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+        set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+        set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+        echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy COD forward $view_yn
+        ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy COD forward $view_yn
+
+        @ djm ++
+
+#echo "PROV.EXIT"
+#exit -1
+end
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+        cd ${wkdir}/messages_output${extout}
+
+        set djm = $djm0
+
+        mkdir -p ${wkdir}/messages_output${extout}/analyzing/ztd_vs_cod
+        cd ${wkdir}/messages_output${extout}/analyzing/ztd_vs_cod
+        ln -sf ../../messages1.output.gz .
+        rm -rf reference_receiver.sta
+        cp -p ${wkdir}/refrec.sta reference_receiver.sta
+        ls -l reference_receiver.sta
+
+        echo $djm $djm1
+
+        while ( $djm <= $djm1 )
+
+                set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+                set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+                set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+                set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+                echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy COD forward $view_yn
+                ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy COD forward $view_yn
+
+                @ djm ++
+
+        #echo "PROV.EXIT"
+        #exit -1
+        end
+
+endif
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+        cd ${wkdir}/messages_output${extout2}
+
+        set djm = $djm0
+
+        mkdir -p ${wkdir}/messages_output${extout2}/analyzing/ztd_vs_cod
+        cd ${wkdir}/messages_output${extout2}/analyzing/ztd_vs_cod
+        ln -sf ../../messages1.output.gz .
+        rm -rf reference_receiver.sta
+        cp -p ${wkdir}/refrec.sta reference_receiver.sta
+        ls -l reference_receiver.sta
+
+        echo $djm $djm1
+
+        while ( $djm <= $djm1 )
+
+                set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+                set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+                set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+                set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+                echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy COD forward $view_yn
+                ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy COD forward $view_yn
+
+                @ djm ++
+
+        #echo "PROV.EXIT"
+        #exit -1
+        end
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_tropospheric_estimation_vs_COD") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+
+analyzing_messages_output_tropospheric_estimation_vs_JPL:
+echo
+echo "============================="
+echo
+echo '10i. Analyzing messages_output: '
+echo "=> Zenith Tropospheric delay vs. JPL values"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+set djm = $djm0
+
+mkdir -p ${wkdir}/messages_output/analyzing/ztd_vs_jpl
+cd ${wkdir}/messages_output/analyzing/ztd_vs_jpl
+ln -sf ../../messages1.output.gz .
+rm -rf reference_receiver.sta
+cp -p ${wkdir}/refrec.sta reference_receiver.sta
+ls -l reference_receiver.sta
+
+echo $djm $djm1
+
+while ( $djm <= $djm1 )
+
+        set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+        set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+        set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+        set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+        echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy JPL forward $view_yn
+        ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy JPL forward $view_yn
+
+        @ djm ++
+
+#echo "PROV.EXIT"
+#exit -1
+end
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+        cd ${wkdir}/messages_output${extout}
+
+        set djm = $djm0
+
+        mkdir -p ${wkdir}/messages_output${extout}/analyzing/ztd_vs_jpl
+        cd ${wkdir}/messages_output${extout}/analyzing/ztd_vs_jpl
+        ln -sf ../../messages1.output.gz .
+        rm -rf reference_receiver.sta
+        cp -p ${wkdir}/refrec.sta reference_receiver.sta
+        ls -l reference_receiver.sta
+
+        echo $djm $djm1
+
+        while ( $djm <= $djm1 )
+
+                set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+                set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+                set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+                set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+                echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy JPL forward $view_yn
+                ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy JPL forward $view_yn
+
+                @ djm ++
+
+        #echo "PROV.EXIT"
+        #exit -1
+        end
+
+endif
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+        cd ${wkdir}/messages_output${extout2}
+
+        set djm = $djm0
+
+        mkdir -p ${wkdir}/messages_output${extout2}/analyzing/ztd_vs_jpl
+        cd ${wkdir}/messages_output${extout2}/analyzing/ztd_vs_jpl
+        ln -sf ../../messages1.output.gz .
+        rm -rf reference_receiver.sta
+        cp -p ${wkdir}/refrec.sta reference_receiver.sta
+        ls -l reference_receiver.sta
+
+        echo $djm $djm1
+
+        while ( $djm <= $djm1 )
+
+                set year = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $1}'`
+                set doy = `echo $djm | ${bindir2}/djm2doy.v2 | gawk '{print $2}'`
+
+                set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+                set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+
+                echo ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy JPL forward $view_yn
+                ${bindir1}/messages1output_2_plots.tropo_wartk_vs_igs.v1h.scr $year $doy JPL forward $view_yn
+
+                @ djm ++
+
+        #echo "PROV.EXIT"
+        #exit -1
+        end
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_tropospheric_estimation_vs_JPL") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+
+analyzing_messages_output_dstec_adjustment:
+echo
+echo "============================="
+echo
+echo '10j. Analyzing messages_output: '
+echo "=> dSTEC adjustment "
+echo "  (or STEC, VTEC, dVTEC adjustment depending on selected option in NML)"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+#vtec_vs_ionex:
+mkdir -p ${wkdir}/messages_output/analyzing/dstec_adjustment
+cd ${wkdir}/messages_output/analyzing/dstec_adjustment
+ln -sf ../../messages1.output.gz .
+${bindir1}/messages1output_2_plots.dstec_adjustment.scr
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	#vtec_vs_ionex:
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/dstec_adjustment
+	cd ${wkdir}/messages_output${extout}/analyzing/dstec_adjustment
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.dstec_adjustment.scr
+
+endif
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout2}
+	#vtec_vs_ionex:
+	mkdir -p ${wkdir}/messages_output${extout2}/analyzing/dstec_adjustment
+	cd ${wkdir}/messages_output${extout2}/analyzing/dstec_adjustment
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.dstec_adjustment.scr
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_dstec_adjustment") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+#echo "PROV.EXIT"
+#exit -1
+
+analyzing_messages_output_postfit_individual_residuals:
+echo
+echo "============================="
+echo
+echo '10k. Analyzing messages_output: '
+echo "=> postfit individual residuals"
+echo "  (for each given receiver)"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+mkdir -p ${wkdir}/messages_output/analyzing/postfit_individual_residuals
+cd ${wkdir}/messages_output/analyzing/postfit_individual_residuals
+ln -sf ../../messages1.output.gz .
+${bindir1}/messages1output_2_plots.postfit_individual_residuals.for_each_receiver_and_for_each_transmitter.v2.scr $typical_plot_behaviour
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/postfit_individual_residuals
+	cd ${wkdir}/messages_output${extout}/analyzing/postfit_individual_residuals
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.postfit_individual_residuals.for_each_receiver_and_for_each_transmitter.v2.scr $typical_plot_behaviour
+
+endif
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout2}
+	mkdir -p ${wkdir}/messages_output${extout2}/analyzing/postfit_individual_residuals
+	cd ${wkdir}/messages_output${extout2}/analyzing/postfit_individual_residuals
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_plots.postfit_individual_residuals.for_each_receiver_and_for_each_transmitter.v2.scr $typical_plot_behaviour
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_postfit_individual_residuals") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+#echo "PROV.EXIT"
+#exit -1
+
+analyzing_messages_output_STEC_from_obs_and_ambiguities_and_doing_TEC_interpolation:
+echo
+echo "============================="
+echo
+echo '10l. Analyzing messages_output: '
+echo "=> STec directly obtained from Observations and phase ambiguities (STO), and doing interpolation"
+echo
+echo "============================="
+cd ${wkdir}/messages_output
+
+#echo "PROV.JUMP to fixDDamb"
+#goto jump_fixDDamb
+
+rm -rf ${wkdir}/messages_output/analyzing/STO_and_TEC_interpolation
+mkdir -p ${wkdir}/messages_output/analyzing/STO_and_TEC_interpolation
+cd ${wkdir}/messages_output/analyzing/STO_and_TEC_interpolation
+ln -sf ../../messages1.output.gz .
+
+
+${bindir1}/messages1output_2_STO_plots_and_interpolation.scr $stdev_stec_dfobs_max ../../.. ../../../expected_vs_observed_satellite_visibility $typical_plot_behaviour
+
+if ( $second_run_to_remove_filter_postfit_outliers == "y" || $second_run_to_remove_filter_postfit_outliers == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout}
+	rm -rf ${wkdir}/messages_output${extout}/analyzing/STO_and_TEC_interpolation
+	mkdir -p ${wkdir}/messages_output${extout}/analyzing/STO_and_TEC_interpolation
+	cd ${wkdir}/messages_output${extout}/analyzing/STO_and_TEC_interpolation
+	ln -sf ../../messages1.output.gz .
+	${bindir1}/messages1output_2_STO_plots_and_interpolation.scr $stdev_stec_dfobs_max $typical_plot_behaviour
+
+endif
+
+jump_fixDDamb:
+
+if ( $prefits_w_fixDDamb_from_filter == "y" || $prefits_w_fixDDamb_from_filter == "Y" ) then
+
+	cd ${wkdir}/messages_output${extout2}
+	rm -rf ${wkdir}/messages_output${extout2}/analyzing/STO_and_TEC_interpolation
+	mkdir -p ${wkdir}/messages_output${extout2}/analyzing/STO_and_TEC_interpolation
+	cd ${wkdir}/messages_output${extout2}/analyzing/STO_and_TEC_interpolation
+	ln -sf ../../messages1.output.gz .
+	#######${bindir1}/messages1output_2_STO_plots_and_interpolation.scr $stdev_stec_dfobs_max $typical_plot_behaviour
+	${bindir1}/messages1output_2_STO_plots_and_interpolation.scr $stdev_stec_dfobs_max ../../.. ../../../expected_vs_observed_satellite_visibility $typical_plot_behaviour
+
+endif
+
+if ($run_level_end == "analyzing_messages_output_STEC_from_obs_and_ambiguities_and_doing_TEC_interpolation") then
+        echo " EXIT after selection of end run level = "$run_level_end
+        exit
+endif
+
+STECs_comparison_w_GIMs_prep_and_plots:
+echo
+echo "============================="
+echo
+echo '12.  Comparison with STECs from GIMs (preparation and plots)'
+echo
+echo "============================="
+
+mkdir -p ${wkdir}/STECs_comparison_w_GIMs${extout1}/org
+cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org
+
+###rm -f ../messages_output.gz
+
+#ln -sf ../../prefits/prefits${extout}.gz ./prefits.gz
+ln -sf ../../prefits/prefits${extout1}.gz ./prefits.gz
+ls -l prefits.gz
+
+#if ( ! ( -f STE.mo ) ) then
+rm -f STE.mo
+#zgrep ^STE ../../messages_output${extout}/messages1.output.gz  > STE.mo
+zgrep ^STE ../../messages_output${extout1}/messages1.output.gz  > STE.mo
+#else
+#	echo
+#	echo "WARNING: using existing "STEC.mo" file at "$PWD
+#endif
+ls -l STE.mo
+
+#echo "PROV.EXIT"
+#exit -1
+
+if (`ls TI-CLASSIC4.[1,2][0-9][0-9][0-9].[0-3][0-9][0-9].gz | wc -l` == 0) then
+
+	zgrep TI-CLASSIC4 prefits.gz | gawk '{yy=$1;if(yy>=80){year=1900+yy}else{year=2000+yy};doyf=sprintf("%03d",$2);print $0 > "TI-CLASSIC4."year"."doyf}' 
+	gzip -f TI-CLASSIC4.[1,2][0-9][0-9][0-9].[0-3][0-9][0-9]
+
+else
+	echo
+	echo "WARNING: using existing TI-CLASSIC files"
+endif
+
+
+tifile_loop:
+foreach tifile (TI-CLASSIC4.[1,2][0-9][0-9][0-9].[0-3][0-9][0-9].gz)
+	echo $tifile
+	set year = `echo $tifile | gawk -F"." '{print $2}'` 
+	set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+	set doyf = `echo $tifile | gawk -F"." '{print $3}'` 
+	set doy = `echo $doyf | gawk '{print $1*1}'`
+	set ionexfile=$GIMid${doyf}0.${yy}i
+	set stecfile = stec_new_v12.____.${GIMid}.${year}${doyf}.gz
+
+	echo $ionexfile $year $doyf $doy $stecfile
+
+	mkdir -p ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${year}${doyf}
+	cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${year}${doyf}
+	ln -sf ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${tifile} .
+	ls -l $tifile
+
+	#${bindir1}/wget_gps_data.v17d.scr $year $doy ionex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $GIMid
+	${bindir1}/wget_gps_data.scr $year $doy ionex $id_dtsec_initial_RINEX n 0 23  ${localrep_RINEX} first n $GIMid
+
+	if (-f $ionexfile.Z) then
+		#zcat ./$agency$doy"0."$yy"i.Z" | gawk -f $bindir/ionex2plotlst6b.awk
+		#zcat ./${ionexfile}.Z | gawk -f $bindir/ionex2plotlst6b.awk
+#		if ( ! ( -f $stecfile ) ) then
+		if (  `ls stec_new_v12.????.${GIMid}.${year}${doyf}.gz | wc -l` == 0  ) then
+#		echo
+#		echo "PROV. Skipping "$stecfile" generation"
+#		goto stec_per_rec
+
+			zcat ./${ionexfile}.Z | gawk -f $bindir/ionex2plotlst7ext3.awk
+			echo $GIMid" "$doy" "$yy
+
+			zcat ${tifile} | ${bindir}/ti2ionex_2_stec_new_v15 fmt_ticlassic4 | gzip > $stecfile
+
+			zcat $stecfile | gawk 'BEGIN{sfn2=".'$GIMid'.'${year}${doyf}'"}{print $0 > "stec_new_v12."$4""sfn2}'
+			gzip -f stec_new_v12.????.${GIMid}.${year}${doyf}
+			ls -l stec_new_v12.????.${GIMid}.${year}${doyf}.gz
+		else
+
+			echo "WARNING: using existing file "$stecfile
+
+		endif
+
+	
+		stec_per_rec:
+	
+		set kon = 0
+	
+		foreach stecfile1 (stec_new_v12.????.${GIMid}.${year}${doyf}.gz)
+	
+			echo $stecfile1
+	
+			set rec = `echo $stecfile1 | gawk -F"." '{print $2}'`
+	
+			if ($rec == "____") then
+				echo "Warning: file with the overall set of receivers, SKIPPED"
+				goto next_sfile
+			endif
+			set stecfile1ext = `echo $stecfile1 | sed s/stec_new_v12/stec_new_v12ext2/g` 
+			set tiext2file = tiext2.${year}.${doyf}.${rec}.${GIMid}.gz
+			echo
+			echo $rec $stecfile1ext
+
+			mkdir -p ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${year}${doyf}/$rec
+			cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${year}${doyf}/$rec
+			echo
+			ln -sf ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${year}${doyf}/${stecfile1} .
+			ls -l ${stecfile1}
+			echo
+			ln -sf ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${tifile} .
+			ls -l ${tifile}
+			echo
+			ln -sf ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/STE.mo .
+			ls -l STE.mo
+
+			echo
+			${bindir}/stec_new_v12_2_must.v4.scr $GIMid $stecfile1 $upload_to_local_ftp $elemin_for_bi $sigma_bi_max_m_of_LI $nobsmin_arch_for_bi
+
+			${bindir}/stec_new_v12_and_must_to_stec_new_v12ext.v4.scr ${year} ${doy} ${GIMid} ${GIMid}-IES stec_new_v12_2_must.tmp
+
+
+			rm -f ii_stec_etc.tmp
+			zcat $stecfile1ext | gawk 'BEGIN{mLI_2_TECU=10/1.05}{if(NF==34){yy=+$1;doy=+$2;itsec=int($3*3600+.5);rec=$4;prn=+$5;ii=yy"_"doy"_"itsec"_"rec"_"prn;stec_int_tecu=$14*mLI_2_TECU;stec_from_aligned_LI_with_GIM_tecu=$31;std_dev_bi_tecu=$32;nobs_bi=$33;narch=$34;mapping=$19;printf "%s %11.4f %11.4f %18.10e %11.4f %5d %5d\n",ii,stec_int_tecu,stec_from_aligned_LI_with_GIM_tecu,mapping,std_dev_bi_tecu,nobs_bi,narch}}' > ii_stec_etc.tmp
+			wc -l ii_stec_etc.tmp
+			rm -f ii_stec_etc.s
+			paste -s ii_stec_etc.tmp > ii_stec_etc.s
+			ls -l ii_stec_etc.s
+			
+
+			zgrep -w $rec ${tifile} | gawk 'BEGIN{iaac_TEC_detr="'$GIMid'";getline < "ii_stec_etc.s";n=NF/7;for(i=1;i<=n;i++){i1=7*i-6;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;i7=i6+1;ii=$(i1);stec_GIM_tecu[ii]=$(i2);stec_LI_alig_GIM_tecu[ii]=$(i3);mapping[ii]=$(i4);std_dev_bi_tecu[ii]=$(i5);nobs_bi[ii]=$(i6);narch[ii]=$(i7)}}{yy=+$1;doy=+$2;itsec=int($3*3600+.5);rec=$4;prn=+$5;ii=yy"_"doy"_"itsec"_"rec"_"prn;if(length(stec_GIM_tecu[ii])>0){printf "%s %s %11.4f %11.4f %18.10e %11.4f %5d %5d\n",$0,iaac_TEC_detr,stec_GIM_tecu[ii],stec_LI_alig_GIM_tecu[ii],mapping[ii],std_dev_bi_tecu[ii],nobs_bi[ii],narch[ii]}}' | gzip > $tiext2file
+			ls -l $tiext2file
+
+			set prnlst = `zcat $tiext2file | gawk '{print $5}' | sort -nu | paste -s`
+
+			echo
+			foreach prn ($prnlst)
+				sed s/REC/${rec}/g ${templatesdir1}/STEC_comp_RT-TOMION_vs_UQRG-GIM.gnu.org | sed s/PRN/${prn}/g | sed s/YEAR/${year}/g | sed s/DOYF/${doyf}/g > STEC_comp_RT-TOMION_vs_UQRG-GIM.${year}.${doyf}.${rec}.${prn}.gnu
+				gnuplot STEC_comp_RT-TOMION_vs_UQRG-GIM.${year}.${doyf}.${rec}.${prn}.gnu
+				echo "Plot generated for "$year" "$doyf" "$rec" "$prn":"
+				ls -l ${PWD}/STEC_comp_RT-TOMION_vs_UQRG-GIM.${year}.${doyf}.${rec}.${prn}.png
+			end
+
+			#echo "PROV.EXIT"
+			#exit -1
+
+			next_sfile:
+
+			@ kon ++
+			#if ( $kon == 2 ) then
+			#	echo "PROV.EXIT"
+			#	exit -1
+			#endif
+
+			cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${year}${doyf}
+		end
+
+		#echo "PROV.EXIT"
+		#exit -1
+	else
+		echo
+		echo "WARNING: Non-existing IONEX file "$ionexfile".Z"
+		echo "(extraction of *info*, TEC.??? and RMS.??? files skipped)"
+		echo
+	endif
+
+
+
+	#echo "PROV.EXIT"
+	#exit -1
+
+	cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org
+end
+
+
+
+
+
+if ($run_level_end == "STECs_comparison_w_GIMs_prep_and_plots") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+STECs_comparison_w_GIMs_statistics:
+echo
+echo "============================="
+echo
+echo '12.b Comparison with STECs from GIMs (statistics)'
+echo
+echo "============================="
+cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org
+
+foreach ydir ([1,2][0-9][0-9][0-9][0-3][0-9][0-9])
+	if ( -d $ydir ) then
+		echo "Directory: "$ydir
+		set year = `echo $ydir | gawk '{print substr($1,1,4)}'`
+		set doyf = `echo $ydir | gawk '{print substr($1,5,3)}'`
+		echo $year $doyf
+		cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${ydir}
+		foreach rdir (????)
+			if ( -d $rdir ) then
+				echo "Receiver: "$rdir
+				cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${ydir}/${rdir}
+				#echo "PROV.SKIP"
+				#goto prov_skip
+				set tiext2file = tiext2.${year}.${doyf}.${rdir}.${GIMid}.gz
+				if (-f STE.mo && -f $tiext2file) then
+					rm -f prn_itsec_stec-tomion-mLI.txt
+					grep $rdir STE.mo | gawk 'BEGIN{yr=+"'$year'";dr=+"'$doyf'"}{y=+$(NF-3);d=+$(NF-2);prn=+$2;itsec=+$(NF-1);stec_tomion_mLI=+$11;if(yr==y && dr==d)print prn,itsec,stec_tomion_mLI}' > prn_itsec_stec-tomion-mLI.txt
+					ls -l prn_itsec_stec-tomion-mLI.txt
+					paste -s prn_itsec_stec-tomion-mLI.txt > prn_itsec_stec-tomion-mLI.txt.s
+					rm -f dstec_tomion-align_gim.txt
+					zcat $tiext2file | gawk 'BEGIN{getline < "prn_itsec_stec-tomion-mLI.txt.s";n=NF/3;for(i=1;i<=n;i++){i1=3*i-2;i2=i1+1;i3=i2+1;prn=+$(i1);itsec=+$(i2);ii=prn"_"itsec;stec_tomion[ii]=$(i3)}}{prn=+$5;itsec=int($3*3600+.5);ii=prn"_"itsec;if(length(stec_tomion[ii])>0){stec_align_gim=$55*1.05/10;d=stec_tomion[ii]-stec_align_gim;print d,$1,$2,$3,$4,$5,$6,stec_tomion[ii],stec_align_gim}}' > dstec_tomion-align_gim.txt
+					gawk '{print $9}' dstec_tomion-align_gim.txt > stec_align_gim.txt
+					ls -l dstec_tomion-align_gim.txt stec_align_gim.txt
+					#~/w/bin/file-with-x-values_2_histogram.v2.scr dstec_tomion-align_gim.txt  0.1  $rdir"_"$year"_"$doyf  "STEC_RT-STEC_LIcalGIM"${GIMid}"_/_mLI"
+					~$masteruser/w/bin/file-with-x-values_2_histogram.v2.scr dstec_tomion-align_gim.txt  0.1  $rdir"_"$year"_"$doyf "STEC_RT-STEC_LIcalGIM_"${GIMid}"_mLI"
+					~$masteruser/w/bin/file-with-x-values_2_histogram.v2.scr stec_align_gim.txt  0.1  $rdir"_"$year"_"$doyf "STEC_LIcalGIM_"${GIMid}"_mLI"
+				endif
+				prov_skip:
+				cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org/${ydir}
+				#echo "PROV.EXIT"
+				#exit -1
+
+			endif
+		end
+		cd ${wkdir}/STECs_comparison_w_GIMs${extout1}/org
+	endif
+end
+
+if ($run_level_end == "STECs_comparison_w_GIMs_statistics") then
+	echo " EXIT after selection of end run level = "$run_level_end
+	exit
+endif
+
+
+
+
+echo
+echo reclst_CPF_TOMION:
+foreach rec_CPF_TOMION ( $reclst_CPF_TOMION )
+	echo $rec_CPF_TOMION
+end
+
+echo
+echo reclst_CPF_MSTIDmodel:
+foreach rec_CPF_MSTIDmodel ( $reclst_CPF_MSTIDmodel )
+	echo $rec_CPF_MSTIDmodel
+end
+
+echo
+echo reclst_CPF_phaseamb_fixing:
+foreach rec_CPF_phaseamb_fixing ( $reclst_CPF_phaseamb_fixing )
+	echo $rec_CPF_phaseamb_fixing
+end
+
+echo
+echo reclst_rover_like_static:
+foreach rec_rover_like_static ( $reclst_rover_like_static)
+	echo $rec_rover_like_static
+end
+
+echo
+echo reclst_rover_like_kin:
+foreach rec_rover_like_kin ( $reclst_rover_like_kin)
+	echo $rec_rover_like_kin
+end

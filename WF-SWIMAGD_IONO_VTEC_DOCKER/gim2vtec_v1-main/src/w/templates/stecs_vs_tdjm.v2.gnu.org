@@ -1,0 +1,67 @@
+set term png size 2560,1920 font arial 44
+set yrange [0:STECMAX]
+#set output "SFILE0.REC.png"
+set output "STECs-vs-TIME.IAAC.YEAR0MONTH0FDAY0F-DOY0F-to-YEAR1MONTH1FDAY1F-DOY1F.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+#set ylabel "Slant Total Electron Content (STEC) for receiver REC[Lon.=LONº,Sph.Lat.=LATº] / TECUs"
+set ylabel "STEC [Rec.=REC,Lon.=LONº,S.Lat.=LATº] / TECUs"
+plot "< cat SFILE0.REC | gawk '{tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;print tdjm,stec_LIcalGIM,stdev_stec_LIcalGIM}'" w p t "STEC from LI calibrated with IAAC GIM","< cat SFILE0.REC | gawk '{tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;print tdjm,stec_GIM}'" w p t "STEC from GIM"
+
+set yrange [0:VTECMAX]
+set output "VTECs-vs-TIME.IAAC.YEAR0MONTH0FDAY0F-DOY0F-to-YEAR1MONTH1FDAY1F-DOY1F.GIM.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Rec. REC & elev. >= ELEMIN4VTECPLOTº during Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+set ylabel "Vertical Total Electron Content (VTEC) / TECUs"
+plot "< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(ele >= ele0)print tdjm,stec_LIcalGIM/mapping}'" w p t "VTEC from LI calibrated with IAAC GIM","< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(ele >= ele0)print tdjm,stec_GIM/mapping}'" w p t "VTEC from GIM"
+
+set output "VTECs-vs-TIME.IAAC.YEAR0MONTH0FDAY0F-DOY0F-to-YEAR1MONTH1FDAY1F-DOY1F.IG1.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Rec. REC & elev. >= ELEMIN4VTECPLOTº during Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+set ylabel "Vertical Total Electron Content (VTEC) / TECUs"
+plot "< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(ele >= ele0)print tdjm,stec_LIcalGIM/mapping}'" w p t "VTEC from LI calibrated with IAAC GIM","< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(ele >= ele0)print tdjm,stec_IG1calGIM/mapping}'" w p t "VTEC from Iono-Graphic_1 calibrated with IAAC GIM"
+
+set output "VTECs-vs-TIME.IAAC.YEAR0MONTH0FDAY0F-DOY0F-to-YEAR1MONTH1FDAY1F-DOY1F.IG2.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Rec. REC & elev. >= ELEMIN4VTECPLOTº during Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+set ylabel "Vertical Total Electron Content (VTEC) / TECUs"
+plot "< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(ele >= ele0)print tdjm,stec_LIcalGIM/mapping}'" w p t "VTEC from LI calibrated with IAAC GIM","< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(ele >= ele0)print tdjm,stec_IG2calGIM/mapping}'" w p t "VTEC from Iono-Graphic_2 calibrated with IAAC GIM"
+
+set output "VTECs-vs-TIME.IAAC.YEAR0MONTH0FDAY0F-DOY0F-to-YEAR1MONTH1FDAY1F-DOY1F.PI.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Rec. REC & elev. >= ELEMIN4VTECPLOTº during Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+set ylabel "Vertical Total Electron Content (VTEC) / TECUs"
+plot "< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(ele >= ele0)print tdjm,stec_LIcalGIM/mapping}'" w p t "VTEC from LI calibrated with IAAC GIM","< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(ele >= ele0)print tdjm,stec_PIcalGIM/mapping}'" w p t "VTEC from PI=P2-P1 calibrated with IAAC GIM"
+
+set yrange [D2V300SMIN:D2V300SMAX]
+set output "d2VTEC300s-vs-TIME.YEAR0MONTH0FDAY0F-DOY0F-to-YEAR1MONTH1FDAY1F-DOY1F.PI.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Rec. REC & elev. >= ELEMIN4VTECPLOTº during Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+set ylabel "d2VTEC@300s / TECUs"
+plot "< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;if(is_d2V5min_computed==\"T\" && ele >= ele0)print tdjm,d2V5min_tecu}'" w p t "From LI"
+
+set pointsize 4
+
+set log y
+set yrange [D2LIMIN:D2LIMAX]
+set output "d2LI-vs-TIME.YEAR0MONTH0FDAY0F-DOY0F-to-YEAR1MONTH1FDAY1F-DOY1F.PI.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Rec. REC & elev. >= ELEMIN4VTECPLOTº during Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+set ylabel "|d2LI| / meters"
+plot "< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;cycleslip=$22;d2Li=sqrt($23*$23);dLi_max=$24;dBw=sqrt($25*$25);dBw_max=$26;if(ele >= ele0 && d2Li > 0)print tdjm,d2Li}'" w p t "From LI","< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;cycleslip=$22;d2Li=sqrt($23*$23);dLi_max=$24;dBw=sqrt($25*$25);dBw_max=$26;if(ele >= ele0 && cycleslip == \"T\" && d2Li > 0)print tdjm,d2Li}'" w p t "Under cycleslip marked" lt 3
+
+set log y
+set yrange [DBWMIN:DBWMAX]
+set output "dBw-vs-TIME.YEAR0MONTH0FDAY0F-DOY0F-to-YEAR1MONTH1FDAY1F-DOY1F.PI.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Rec. REC & elev. >= ELEMIN4VTECPLOTº during Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+set ylabel "|dBw| / meters"
+plot "< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;cycleslip=$22;d2Li=sqrt($23*$23);dLi_max=$24;dBw=sqrt($25*$25);dBw_max=$26;if(ele >= ele0 && dBw > 0)print tdjm,dBw}'" w p t "From LI","< cat SFILE0.REC | gawk 'BEGIN{ele0=ELEMIN4VTECPLOT}{ele=+$6;tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;cycleslip=$22;d2Li=sqrt($23*$23);dLi_max=$24;dBw=sqrt($25*$25);dBw_max=$26;if(ele >= ele0 && cycleslip == \"T\" && dBw > 0)print tdjm,dBw}'" w p t "Under cycleslip marked" lt 3

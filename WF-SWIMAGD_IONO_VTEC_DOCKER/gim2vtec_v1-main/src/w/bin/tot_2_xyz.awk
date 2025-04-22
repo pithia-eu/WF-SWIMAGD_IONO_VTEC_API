@@ -1,0 +1,31 @@
+BEGIN{
+	d2r=atan2(1.,1.)/45
+	if(length(yex)==0){
+		yex=80
+		mox=1
+		dax=6
+		hox=0
+		mix=0
+		sex=0
+	}
+	sx=99.9
+	sy=99.9
+	sz=99.9
+	dx=0
+	dy=0
+	dz=0
+}
+{
+	rec=$1
+	lon=$2
+	lat=$3
+	r=$4
+	lonr=lon*d2r
+	latr=lat*d2r
+	cl=cos(latr)
+	rm=r*1e+3
+	x=rm*cl*cos(lonr)
+	y=rm*cl*sin(lonr)
+	z=rm*sin(latr)
+	printf "XYZ  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f%14.4f%14.4f%14.4f%14.4f%14.4f%14.4f\n",yex,mox,dax,hox,mix,sex,rec,x,y,z,sx,sy,sz,dx,dy,dz
+}

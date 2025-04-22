@@ -1,0 +1,42 @@
+#!/bin/csh -f
+if ( $# != 8 && $# != 9) then
+	echo "Usage: "$0" view(y/n)  plot_title(e.g. RT-TOMION_2012.01.16_1805)  predir(e.g. ~) print_rec_names (y/n)  lon0 (e.g. 120)  lon1 (e.g. 155)  lat0 (e.g. 20) lat1 (e.g. 46)  [totfile (e.g. active_stations.tot) --if not given, tmp.tot assumed--]"
+	exit -1
+endif
+set view=$1
+set plot_title=$2
+set predir=$3
+set print_rec_names=$4
+set lon0=$5
+set lon1=$6
+set lat0=$7
+set lat1=$8
+
+if ( $# == 9 ) then
+	cp $9 tmp.tot
+else
+	touch tmp.tot
+endif
+set totfile=tmp.tot
+
+echo $totfile
+
+set bindir=${predir}/w/bin
+set templatesdir=${predir}/w/templates
+
+#gawk '{if($2>180)$2=$2-360;printf "set label \"%s\" at %8.3f , %8.3f\n",$1,$2,$3}' $totfile > tmp.gnu
+gawk '{if($2>180)$2=$2-360;printf "set label \"%s\" at %8.3f , %8.3f\n",$1,$2+0.15,$3}' $totfile > tmp.gnu
+
+if ( $view == "y" ) then
+	cp ${templatesdir}/tot_2_map_w_rec-names.v3.gnu.org ./tot_2_map_w_rec-names.gnu.org.tmp
+else
+	cp ${templatesdir}/tot_2_map_w_rec-names.noview_v3.gnu.org ./tot_2_map_w_rec-names.gnu.org.tmp
+endif
+if ( $print_rec_names == "y" ) then
+	cat tmp.gnu ./tot_2_map_w_rec-names.gnu.org.tmp | sed s/PLOT_TITLE/${plot_title}/g | sed s/LON0/${lon0}/g | sed s/LON1/${lon1}/g | sed s/LAT0/${lat0}/g | sed s/LAT1/${lat1}/g > tot_2_map_w_rec-names.gnu
+else
+	cat ./tot_2_map_w_rec-names.gnu.org.tmp | sed s/PLOT_TITLE/${plot_title}/g | sed s/LON0/${lon0}/g | sed s/LON1/${lon1}/g | sed s/LAT0/${lat0}/g | sed s/LAT1/${lat1}/g  > tot_2_map_w_rec-names.gnu
+endif
+gnuplot tot_2_map_w_rec-names.gnu
+#ls -l tot_2_map_w_rec-names.prn tot_2_map_w_rec-names.eps
+ls -l *png *eps

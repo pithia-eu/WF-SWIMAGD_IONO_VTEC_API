@@ -1,0 +1,23 @@
+#!/bin/csh -f
+if($# != 1)then
+	echo "Usage: "$0" xyz_file (e.g. xyz.tot.rov1.4)"
+	exit -1
+endif
+set xyz_file = $1
+rm -f $xyz_file.rxyz $xyz_file.tot $xyz_file.eli
+gawk '{print $9,$10,$11,$12}'  $xyz_file  > $xyz_file.rxyz
+ls -l $xyz_file.rxyz
+gawk -f ~/wrt/bin/sxyz2sadr.v2.awk $xyz_file.rxyz > $xyz_file.tot
+#gawk -f ~ionex4/wrt/bin/sxyz2sadr.v2.awk $xyz_file.rxyz > $xyz_file.tot
+ls -l $xyz_file.tot
+rm -rf GD-ERROR.log
+grep GD-ERROR $xyz_file.tot > GD-ERROR.log
+if ( -f GD-ERROR.log && ! ( -z GD-ERROR.log ) ) then
+	echo "ERROR: "
+	cat GD-ERROR.log
+	echo "Please fix this problem with such apriori coordinates (likely coming from header)"
+	exit -1
+endif
+cat $xyz_file.tot | ~/w/bin/tot_2_eli > $xyz_file.eli
+#cat $xyz_file.tot | ~ionex4/w/bin/tot_2_eli > $xyz_file.eli
+ls -l $xyz_file.eli

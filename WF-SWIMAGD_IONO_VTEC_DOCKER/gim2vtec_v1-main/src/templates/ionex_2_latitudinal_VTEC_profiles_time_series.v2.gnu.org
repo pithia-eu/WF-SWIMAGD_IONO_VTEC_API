@@ -1,0 +1,10 @@
+set term gif
+set output "plots/ionex_2_latitudinal_VTEC_profiles_time_series.IAAC.YEAR.DOYF.GPSTIMEH.v2.gif"
+set xrange [-90:90]
+set grid
+set yrange [0:VTECMAX]
+set ylabel "VTEC [Longitude = LON deg] / TECU"
+set xlabel "Latitude / degrees"
+set title "Day DOYF, YEAR @ GPSTIMEH hours (IAAC)"
+#plot "< gawk 'BEGIN{f2tecu=10^LOG_VTEC_UNITS_TECUS}{if($4==LON)print $5,f2tecu*$3}' YEAR/DOYF/TECFILE | sort -n" t ""
+plot "< gawk 'BEGIN{doy=+\"DOYF\"}{doy1=+$2;if($1==YEAR && doy1==doy && $3==GPSTIMEH)print $5,$6,$7}' LATITUDINAL_VTEC_SVTEC_PROFILE  | sort -n" t "" w lp,"< gawk 'BEGIN{doy=+\"DOYF\"}{doy1=+$2;if($1==YEAR && doy1==doy && $3==GPSTIMEH)print $5,$6,$7}' LATITUDINAL_VTEC_SVTEC_PROFILE  | sort -n" t "" w e

@@ -1,0 +1,7 @@
+set term jpeg large
+set output "VTEC_from_AGENCY_at_PLACE_during_YYDOY.jpeg"
+set grid
+set ylabel "VTEC from AGENCY at PLACE / TECU"
+set xlabel "GPS Time / seconds of YYDOY"
+set xrange [0:86400]
+plot "< zcat tec.output.AGENCY.test.YYDOY.PLACE.gz | gawk '{print $3*3600,$13*10/1.05}'" t ""

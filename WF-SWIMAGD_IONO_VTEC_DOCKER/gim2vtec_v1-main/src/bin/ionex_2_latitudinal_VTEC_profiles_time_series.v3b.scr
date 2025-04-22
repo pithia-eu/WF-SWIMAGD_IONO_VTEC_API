@@ -1,0 +1,170 @@
+#!/bin/csh -f
+set nonomatch
+if ( $# != 6 ) then
+	echo "Usage: "$0" iaac (e.g. uqrg)  year (e.g. 2016)  doy0 (e.g. 1)  doy1 (e.g. 22)  lon (in deg., e.g. -105)  run_level (start/plots/movie)"
+	exit -1
+endif
+#set iaac=uqrg
+#set doy0=1
+#set doy1=22
+#set year=2016
+set iaac=$1
+set year=$2
+set doy0=$3
+set doy1=$4
+set lon00=$5
+set lon = `echo $lon00 | gawk '{if($1>180){print $1-360}else{print $1}}'`
+
+set run_level=$6
+
+set templatesdir = ~/templates
+#set plot_template = ionex_2_latitudinal_VTEC_profiles_time_series.gnu.org
+set plot_template = ionex_2_latitudinal_VTEC_profiles_time_series.v2.gnu.org
+
+
+set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+set doy0f = `echo $doy0 | gawk '{printf "%03d",$1}'`
+set doy1f = `echo $doy1 | gawk '{printf "%03d",$1}'`
+set pwd0=$PWD
+
+set latitudinal_VTEC_profile = "latitudinal_VTEC_profiles_time_series."$iaac"."$year"."$doy0f"-"$doy1f".txt"
+set latitudinal_SVTEC_profile = "latitudinal_SVTEC_profiles_time_series."$iaac"."$year"."$doy0f"-"$doy1f".txt"
+set latitudinal_VTEC_SVTEC_profile = "latitudinal_VTEC_SVTEC_profiles_time_series."$iaac"."$year"."$doy0f"-"$doy1f".txt"
+
+echo "Going to run_level = "$run_level
+goto $run_level
+
+start:
+set doy=$doy0
+while ( $doy <= $doy1 )
+	echo
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	echo $year $doy $doyf
+	#set wkdir = ${pwd0}/${iaac}/${year}/${doyf}
+	set wkdir = ${pwd0}/${year}/${doyf}
+	set ifile = ${iaac}${doyf}0.${yy}i.Z
+	mkdir -p ${wkdir}
+	cd ${wkdir}
+	if ( ! ( -f $ifile ) ) then
+		echo ~/w/bin/wget_gps_data.scr $year $doy ionex 30s n 0 23 ~/w/localrep/rinex/geonet last n uqrg
+		~/w/bin/wget_gps_data.scr $year $doy ionex 30s n 0 23 ~/w/localrep/rinex/geonet last n uqrg
+	endif
+	zcat $ifile | gawk -f ~/bin/ionex2plotlst7ext3.awk
+	#echo "PROV.EXIT"
+	#exit -1
+	@ doy ++
+end
+
+plots:
+set doy=$doy0
+#cd ${pwd0}/${iaac}
+cd ${pwd0}
+rm -f $latitudinal_VTEC_profile
+rm -f $latitudinal_SVTEC_profile
+
+set closest_lon_2_gim_lons = `gawk 'BEGIN{lon=+"'$lon'";adlonmin=9999;lon1=-999}{lon0=+$4;dlon=lon-lon0;adlon=sqrt(dlon*dlon);if(adlon < adlonmin){adlonmin=adlon;lon1=lon0}}END{print lon1}' ${year}/???/tec.???`
+echo "lon, closest_lon_2_gim_lons = "$lon" , "$closest_lon_2_gim_lons
+
+#echo "PROV.EXIT"
+#exit -1
+
+set lon1 = $closest_lon_2_gim_lons
+
+while ( $doy <= $doy1 )
+	echo
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	echo $year $doyf
+	set tdir = ${year}/${doyf}
+	set dtsec = `gawk '{if(NR==3)print $1}' ${tdir}/t_lat_lon.info`
+	set log_VTEC_units_TECUs = `gawk '{if(NR==10)print $1}' ${tdir}/t_lat_lon.info`
+	echo
+	echo
+	gawk 'BEGIN{f2tecu=10^"'$log_VTEC_units_TECUs'";dtsec=+"'$dtsec'";lon=+"'$lon1'";iaac="'$iaac'";year="'$year'";doyf="'$doyf'"}{if($4==lon){l=length(FILENAME);i=substr(FILENAME,l-2,3);gpstimeh=(i-1)*dtsec/3600;if(gpstimeh < 24)printf "%4d %3d %5.2f %s %6.2f %5.1f \n",year,doyf,gpstimeh,iaac,$5,f2tecu*$3}}' ${tdir}/tec.??? >> $latitudinal_VTEC_profile
+	echo
+	#echo "PROV.EXIT"
+	#exit -1
+	echo
+	gawk 'BEGIN{f2tecu=10^"'$log_VTEC_units_TECUs'";dtsec=+"'$dtsec'";lon=+"'$lon1'";iaac="'$iaac'";year="'$year'";doyf="'$doyf'"}{if($4==lon){l=length(FILENAME);i=substr(FILENAME,l-2,3);gpstimeh=(i-1)*dtsec/3600;if(gpstimeh < 24)printf "%4d %3d %5.2f %s %6.2f %5.1f \n",year,doyf,gpstimeh,iaac,$5,f2tecu*$3}}' ${tdir}/rms.??? >> $latitudinal_SVTEC_profile
+	@ doy ++
+end
+
+#echo "PROV.EXIT"
+#exit -1
+
+set vtecmax = `sort -nr -k 6,6 $latitudinal_VTEC_profile | gawk '{print $6+1}' | head -n 1`
+echo "vtecmax = "$vtecmax
+wc -l $latitudinal_VTEC_profile
+ls -l ${PWD}/$latitudinal_VTEC_profile
+wc -l $latitudinal_SVTEC_profile
+ls -l ${PWD}/$latitudinal_SVTEC_profile
+
+
+paste $latitudinal_VTEC_profile $latitudinal_SVTEC_profile | gawk '{if($1==$7 && $2==$8 && $3==$9 && $4==$10 && $5==$11)printf "%4d %3d %5.2f %s %6.2f %5.1f %5.1f\n",$1,$2,$3,$4,$5,$6,$12}' > $latitudinal_VTEC_SVTEC_profile
+wc -l $latitudinal_VTEC_SVTEC_profile
+ls -l $latitudinal_VTEC_SVTEC_profile
+
+set n_VTEC = `wc -l $latitudinal_VTEC_profile | gawk '{print $1}'`
+set n_SVTEC = `wc -l $latitudinal_SVTEC_profile | gawk '{print $1}'`
+set n_VTEC_SVTEC = `wc -l $latitudinal_VTEC_SVTEC_profile | gawk '{print $1}'`
+
+if ( ! ( ( $n_VTEC == $n_SVTEC ) && ( $n_VTEC == $n_VTEC_SVTEC ) ) ) then
+	echo 
+	echo 'ERROR: ! ( ( $n_VTEC == $n_SVTEC ) && ( $n_VTEC == $n_VTEC_SVTEC ) )'
+	echo "ERROR: ! ( ( $n_VTEC == $n_SVTEC ) && ( $n_VTEC == $n_VTEC_SVTEC ) )"
+	exit -1
+else
+	echo
+	echo "OK: Number of records in agreement for "$latitudinal_VTEC_profile", "$$latitudinal_SVTEC_profile" and "$latitudinal_VTEC_SVTEC_profile
+	echo "    # records = "$n_VTEC
+	echo
+endif
+#echo "PROV.EXIT"
+#exit -1
+
+set doy=$doy0
+#cd ${pwd0}/${iaac}
+cd ${pwd0}
+rm -rf plots
+mkdir plots
+while ( $doy <= $doy1 )
+	echo
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	echo $year $doy $doyf
+	#set wkdir = ${pwd0}/${iaac}/${year}/${doyf}
+	set tdir = ${year}/${doyf}
+	foreach tecfile0 ( ${tdir}/tec.??? )
+
+		set dtsec = `gawk '{if(NR==3)print $1}' ${tdir}/t_lat_lon.info`
+		set log_VTEC_units_TECUs = `gawk '{if(NR==10)print $1}' ${tdir}/t_lat_lon.info`
+		set gpstimes = `echo $tecfile0 | gawk -F"/" 'BEGIN{dtsec=+"'$dtsec'"}{l=length($0);i=+substr($0,l-2,3);printf "%5d",(i-1)*dtsec}'`
+		echo $gpstimes
+		if ( $gpstimes < 86400 ) then
+			set gpstimeh = `echo $gpstimes | gawk '{printf "%05.2f",$1/3600}'`
+			set tecfile = `echo $tecfile0 | gawk -F"/" '{print $NF}'`
+			echo 
+			echo $year $doyf $tecfile $gpstimeh $dtsec $log_VTEC_units_TECUs
+
+			echo sed s/TECFILE/${tecfile}/g ${templatesdir}/${plot_template} | sed s/LON/${lon1}/g | sed s/YEAR/${year}/g | sed s/DOYF/${doyf}/g | sed s/GPSTIMEH/${gpstimeh}/g | sed s/VTECMAX/${vtecmax}/g | sed s/IAAC/${iaac}/g | sed s/LATITUDINAL_VTEC_SVTEC_PROFILE/${latitudinal_VTEC_SVTEC_profile}/g 
+			#sed s/TECFILE/${tecfile}/g ${templatesdir}/${plot_template} | sed s/LON/${lon1}/g | sed s/YEAR/${year}/g | sed s/DOYF/${doyf}/g | sed s/GPSTIMEH/${gpstimeh}/g | sed s/VTECMAX/${vtecmax}/g | sed s/IAAC/${iaac}/g | sed s/LATITUDINAL_VTEC_SVTEC_PROFILE/${latitudinal_VTEC_SVTEC_profile}/g > $plot_template:r.gnu
+			sed s/TECFILE/${tecfile}/g ${templatesdir}/${plot_template} | sed s/LON/${lon1}/g | sed s/YEAR/${year}/g | sed s/DOYF/${doyf}/g | sed s/GPSTIMEH/${gpstimeh}/g | sed s/VTECMAX/${vtecmax}/g | sed s/IAAC/${iaac}/g | sed s/LATITUDINAL_VTEC_SVTEC_PROFILE/${latitudinal_VTEC_SVTEC_profile}/g > $plot_template:r
+		#####sed s/TECFILE/${tecfile}/g ${templatesdir}/${plot_template} | sed s/LON/${lon}/g> $plot_template.gnu
+			#gnuplot  $plot_template:r.gnu
+			gnuplot  $plot_template:r
+		#echo "PROV.EXIT"
+		#exit -1
+		endif
+
+	end
+	@ doy ++
+end
+
+movie:
+#cd ${pwd0}/${iaac}
+cd ${pwd0}
+mkdir movie
+#echo gifmerge -d20 plots/*gif 
+#gifmerge -d20 plots/*gif > movie/ionex_2_latitudinal_VTEC_profiles_time_series.uqrg.${year}.${doy0f}-${doy1f}.anim.gif
+#ls -l movie/ionex_2_latitudinal_VTEC_profiles_time_series.uqrg.${year}.${doy0f}-${doy1f}.anim.gif
+echo convert -delay 30 -loop 0 plots/*.gif movie/ionex_2_latitudinal_VTEC_profiles_time_series.uqrg.${year}.${doy0f}-${doy1f}.anim.gif
+convert -delay 30 -loop 0 plots/*.gif movie/ionex_2_latitudinal_VTEC_profiles_time_series.uqrg.${year}.${doy0f}-${doy1f}.anim.gif
+ls -l movie/ionex_2_latitudinal_VTEC_profiles_time_series.uqrg.${year}.${doy0f}-${doy1f}.anim.gif

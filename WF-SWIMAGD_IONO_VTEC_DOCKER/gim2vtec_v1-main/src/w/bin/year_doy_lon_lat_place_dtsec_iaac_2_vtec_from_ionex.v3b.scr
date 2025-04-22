@@ -1,0 +1,57 @@
+#!/bin/csh -f
+#081231: Main diff. of v2 regarding to first version is the
+# implementation of plot of VTEC in function of time, which can
+# be optionally seen at the end of the script.
+if($# != 8)then
+	echo "Usage "$0" year(e.g. 2006) doy(e.g. 285) lon/deg(e.g. 7.596) lat/deg(e.g. 47.642) place_label(e.g. hueg) dtsec/sec(e.g. 900) ionex_agency(e.g. upcg) VTEC_plot_view(view/noview)" 
+	exit -1
+endif
+
+set year=$1
+set doy=`echo $2 | gawk '{printf "%03d",$1}'`
+set lon=$3
+set lat=$4
+set place=$5
+set dtsec=$6
+set agency=$7
+set VTEC_plot_view=$8
+
+set bindir=~/w/bin
+set templatesdir=~/w/templates
+
+set yy=`echo $year | gawk '{printf "%02d",$1-int($1/100)*100}'`
+
+
+#echo $year $doy $lon $lat $dtsec $agency  $yy
+
+echo $year $doy $lon $lat $dtsec $place | ${bindir}/year_doy_lon_lat_dtsec_place_2_ti > ti.input
+
+set ionexfile=${agency}${doy}0.${yy}i
+
+if ( ! ( -f $ionexfile.Z ) ) then
+
+	#wget ftp://cddis.gsfc.nasa.gov/pub/gps/products/ionex/${year}/${doy}/${ionexfile}.Z
+#Usage: /home/ionsat-tools-user-01/w/bin/wget_gps_data.scr year doy download_what(rinex,eph,both,ionex) localrep_sampling(1Hz or 30s)  downdate_final_rinex_from_1Hz_to_30s (y/n)  hour0_1Hz (e.g. 0 or 14)  hour1_1Hz (e.g. 24 or 17)  localrep_basedir (e.g. ~/w/localrep/rinex/geonet)  order_to_look_in_localrep_dir(first or last)  backup_in_localrep (y/n)  rec1(or iaac1 for ionex) ... recn(or iaacn for ionex)
+	${bindir}/wget_gps_data.scr $year $doy ionex 30s n 0 23 ${LOCAL_REP_DIR} first y ${agency}
+
+	if ( ! ( -f $ionexfile.Z ) ) then
+		echo "ERROR: Non available "$ionexfile.Z" nor at local directory nor at server cddis"
+		exit -1
+	endif
+
+endif
+
+zcat $ionexfile.Z | gawk -f ${bindir}/ionex2plotlst4.awk
+
+#cat ti.input | ${bindir}/ti2ionex_2_stec_new_v4 fmt_jason | gzip > tec.output.$agency.test.$yy$doy.$place.gz
+cat ti.input | ${bindir}/ti2ionex_2_stec_new_v15 fmt_jason n | gzip > tec.output.$agency.test.$yy$doy.$place.gz
+ls -l tec.output.$agency.test.$yy$doy.$place.gz
+########################################
+#if ( $VTEC_plot_view == "view" ) then
+#	sed s/AGENCY/${agency}/g  ${templatesdir}/VTEC_at_a_given_place_in_function_of_time.view.gnu.org | sed s/PLACE/${place}/g | sed s/AGENCY/${agency}/g | sed s/YY/${yy}/g | sed s/DOY/${doy}/g > VTEC_at_a_given_place_in_function_of_time.gnu
+#else
+#	sed s/AGENCY/${agency}/g  ${templatesdir}/VTEC_at_a_given_place_in_function_of_time.noview.gnu.org | sed s/PLACE/${place}/g | sed s/AGENCY/${agency}/g | sed s/YY/${yy}/g | sed s/DOY/${doy}/g > VTEC_at_a_given_place_in_function_of_time.gnu
+#endif
+#gnuplot  VTEC_at_a_given_place_in_function_of_time.gnu
+#ls -l VTEC_from_${agency}_at_${place}_during_${yy}${doy}.jpeg
+########################################

@@ -1,0 +1,445 @@
+#!/bin/csh -f
+if($# < 10)then
+	echo "Usage: "$0" year (e.g. 2017)  day_of_year (e.g. 270)  ionex_id (e.g. uqrg)  rinex_sampling_time_in_seconds (e.g. 30)  rinex_to_be_gathered_locally (n, or the absolute address of the local data subdirectory just ONE level below the working directory, e.g. GNSS_RINEXv2_zipped_hatanaka_files)  elemin4align (e.g. 20.d0)  konmin4gim_stec (e.g. 25)  stdev_bi_max4gimcal_tecu (e.g. 5.d0)  extension_name_for_output_dir (e.g. 4SIRGAS)  plots (y/n)  [GPS_receiver_id1 (e.g. ebre) ... GP_receiver_idN ]"
+	exit -1
+endif
+
+
+#setenv masteruser ionex4
+#setenv masteruser ionsat-tools-master
+setenv masteruser 
+
+set precise_orbits_set = igs
+#set tomion_pp_script_ver = 5f
+set tomion_pp_script_ver = 5gg
+#set ti2ionex_2_stec_new_ver = 17b
+set ti2ionex_2_stec_new_ver = 17eGFORTRAN
+set bindir = ~$masteruser/bin
+set bindir1 = ~$masteruser/w/bin
+set templatesdir1 = ~$masteruser/w/templates
+#set plots_file_template = gimrnx2tec.gnu.org
+set plots_file_template = gimrnx2tec-v2.gnu.org
+#set delete_tmpdir_and_files = 1
+set delete_tmpdir_and_files = 0
+
+# #27: external_coordinates_file (n -IGS sinex- / h -RINEX header- / r -Very raw from GPS sat. in view- / file, e.g. ~/w/datasets/coordinates/permanent_receivers/xyz.tot.all)
+set external_coordinates_file = ~/w/datasets/coordinates/permanent_receivers/xyz.tot.all
+
+set reclst = "_"
+set time_stamp = `date +%Y%m%d%H%M%S`
+#set wkdir_ext = tmp$time_stamp
+set wkdir_ext = tmp
+set wkdir_lead_chars = iagpGNSSm.v${tomion_pp_script_ver}.$wkdir_ext
+
+set year = $1
+set error_year = `echo $year | gawk '{if(length($1)!=4 || $1 < 1980 || $1 > 2099){print 1}else{print 0}}'`
+if ( $error_year ) then
+echo "ERROR: year = "$year" not in the allowable range. Please check and re-run"	
+exit -2
+endif	
+set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+
+set doy = $2
+set error_doy = `echo $doy | gawk '{if(length($1)>3 || $1 < 1 || $1 > 366){print 1}else{print 0}}'`
+if ( $error_doy ) then
+echo "ERROR: doy = "$doy" not in the allowable range. Please check and re-run"	
+exit -3
+else
+set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+endif	
+
+set ionexid = $3
+set error_ionexid = `echo $ionexid | gawk '{if(length($1)!=4){print 1}else{print 0}}'`
+if ( $error_ionexid ) then
+echo "ERROR: ionexid = "$ionexid" not in the allowable range. Please check and re-run"	
+exit -4
+endif	
+
+
+set rinex_sampling_time_in_seconds = $4
+set error_rinex_sampling_time_in_seconds = `echo $rinex_sampling_time_in_seconds | gawk '{if($1<1 || int($1)!=$1){print 1}else{print 0}}'`
+if ( $error_rinex_sampling_time_in_seconds ) then
+	echo "ERROR: rinex_sampling_time_in_seconds = "$rinex_sampling_time_in_seconds" not in the allowable range. Please check and re-run"	
+	exit -4
+endif	
+
+set rinex_to_be_gathered_locally = $5
+
+echo "Hello..."
+echo $rinex_to_be_gathered_locally
+if ( $rinex_to_be_gathered_locally != "n" && $rinex_to_be_gathered_locally != "N" ) then
+
+	rm -r temp.localrep
+	echo "A..."
+	if ( $rinex_sampling_time_in_seconds == 1 ) then
+		set dir_ext_tmp = 1Hz
+		echo  "B..."
+	else
+		if ( $rinex_sampling_time_in_seconds == 30 ) then
+			set dir_ext_tmp = 30s
+			echo "C..."
+		else
+			echo "D..."
+			echo "ERROR: unexpected rinex_sampling_time_in_seconds = "$rinex_sampling_time_in_seconds
+			exit -1
+		endif
+	endif
+	echo "E..."
+	mkdir -p temp.localrep/${dir_ext_tmp}/${year}/${doyf}
+	#ln -s $rinex_to_be_gathered_locally/???????*.??d.Z temp.localrep/${dir_ext_tmp}/${year}/${doyf}
+	ln -s $rinex_to_be_gathered_locally/${dir_ext_tmp}/${year}/${doyf}/???????*.??d.Z temp.localrep/${dir_ext_tmp}/${year}/${doyf}
+
+endif
+echo "F..."
+
+set elemin4align = $6
+set konmin4gim_stec = $7
+set stdev_bi_max4gimcal_tecu = $8
+
+set extension_name_for_output_dir = $9
+
+set plots = $10
+echo "plots = "$plots
+set error_plots = `echo $plots | gawk '{if($1 != "y" && $1 != "Y" && $1 != "n" && $1 != "N"){print 1}else{print 0}}'`
+echo "error_plots = "$error_plots
+if ( $error_plots) then
+        echo "ERROR: plots= "$plots" not in the allowable range (y,Y,n,N). Please check and re-run"
+        exit -5
+endif
+
+
+set pwd0 = $PWD
+set wkdir = ${pwd0}/gimrnx2tec.${year}.${doyf}.$extension_name_for_output_dir
+mkdir -p $wkdir
+
+if ( $rinex_to_be_gathered_locally == "n" || $rinex_to_be_gathered_locally == "N" ) then
+	set localrep_RINEX = ${wkdir}/rinex_files
+	mkdir -p $localrep_RINEX
+else
+	set localrep_RINEX = ${PWD}/temp.localrep
+endif
+echo $localrep_RINEX
+cd $wkdir
+
+set kon_rec = 0
+if ( $# > 5 ) then
+	shift
+	shift
+	shift
+	shift
+	shift
+	shift
+	shift
+	shift
+	shift
+	shift
+	foreach rec ( $* )
+                #set tic4full_file = tic4full2.${ionexid}.${year}${doyf}.${rec}.gz
+                set tic4full_file = tic4full3.${ionexid}.${year}${doyf}.${rec}.gz
+		if ( -f $tic4full_file ) then
+			rm -f nada
+			zcat $tic4full_file > nada
+			if ( ! ( -z nada ) ) then
+				echo
+				echo "WARNING: Existing non-zero file "$tic4full_file
+				echo " (skipping its generation ) "
+				goto nextrec 
+			endif
+		endif
+		set tifile=ti.$year.${doyf}.${rec}.gz
+		if (  -f $tifile  ) then
+			rm -f nada1
+			zcat $tifile > nada1
+			if ( ! ( -z nada1 ) ) then
+				echo
+				echo "WARNING: Existing ti file in actual dir; nothing done for "$tifile
+				echo " (skipping its generation ) "
+				goto nextrec 
+			endif
+		endif
+		@ kon_rec ++
+		echo $rec
+		set error_rec = `echo $rec | gawk '{if(length($1)!=4){print 1}else{print 0}}'`
+		if ( $error_rec ) then
+			echo "ERROR: input rec#"$kon_rec" = "$rec" not in the allowable range. Please check and re-run"	
+			exit -5
+		endif
+	
+		if ( $kon_rec == 1 ) then
+
+			set reclst = $rec
+
+		else
+			set reclst = ${reclst}"_"$rec
+	
+		endif
+
+		nextrec:
+
+	end
+#
+# STEP#1: Generating of the TI-file
+#
+
+	echo
+	echo $reclst
+	echo
+#	
+#Usage: /home/ionsat-tools-user/w/bin/iono_and_geo_precise_GNSS_modelling.v5gg.scr -with the following arguments-  
+# #1: run_ID_extension (e.g. LIDAR_flight_SE_Autralia)   
+# #2: source_of_measurements: rinex or messages_input (e.g. messages_input)
+# #3: messages_input_file (in case of selecting 'messages_input' in previous option, e.g. ~/wrt/run/auditor_test_generating_messages_input/messages1.input.auditor.p13-14.02.2017.gz)
+# #4: run_level_start (e.g. RINEX_and_nav_files_adquisition [*])
+# #5: run_level_end (e.g. prefits [*])
+#	[*] run levels: 
+#          dummy_start
+#		gathering_rinex_files
+#		gathering_orbits_clocks
+#		gathering_apriori_rec_coordinates
+#		map_with_involved_receivers
+#		voxels_definition
+#		gathering_ephemeris_message
+#		gathering_C1-P1
+#		gathering_GPS_constellation_status
+#		generating_messages_input
+#		expected_vs_observed_satellite_visibility
+#		generating_prefits
+#		analyzing_prefits_phase_cont_arc_id_vs_time
+#		generating_messages_output
+#          generating_messages_output_after_removing_filter_postfit_outliers
+#          generating_messages_output_after_fixing_DDamb_from_filter
+#          generating_gipsy_output
+#		analyzing_messages_output_DDDprefits_Lc
+#		analyzing_messages_output_DDNw_from_BcBi_vs_from_MW
+#		analyzing_messages_output_actual_fixing_ambiguity_rates
+#		analyzing_messages_output_VTEC_vs_GIM_VTEC
+#		analyzing_messages_output_receiver_coordinates
+#		analyzing_messages_output_dcbs
+#		analyzing_messages_output_satellite_clocks_vs_IGS
+#		analyzing_messages_output_tropospheric_estimation_vs_IGS
+#          analyzing_messages_output_tropospheric_estimation_vs_IGS_Gipsy
+#          analyzing_messages_output_tropospheric_estimation_vs_COD
+#          analyzing_messages_output_tropospheric_estimation_vs_JPL
+#		analyzing_messages_output_dstec_adjustment
+#		analyzing_messages_output_postfit_individual_residuals
+#		analyzing_messages_output_STEC_from_obs_and_ambiguities_and_doing_TEC_interpolation
+#		STECs_comparison_w_GIMs_prep_and_plots
+#		STECs_comparison_w_GIMs_statistics
+# #6: year0 (e.g. 2014)
+# #7: doy0 (e.g. 112)
+# #8: hh0 (e.g. 0)
+# #9: year1 (e.g. 2014)
+# #10: doy1 (e.g. 113)
+# #11: hh1 (e.g. 4)
+# #12: refrec (e.g. tmra)
+# #13: elemin_refsat (in degrees, e.g. 25)
+# #14: localrep_RINEX (e.g. /d4/home/ionex4/w/localrep/rinex/piom_fipp/LIDAR_flight)
+# #15: dtsec_initial_RINEX (e.g. 30)
+# #16: dtsec_down_CPF_TOMION (e.g. 300)
+# #17: dtsec_down_CPF_MSTIDmodel (e.g. 30)
+# #18: dtsec_down_rover_like_static (e.g. 30)
+# #19: dtsec_down_rover_like_kin (e.g. 1)
+# #20: reclst_CPF_TOMION (e.g. albu_blck_cble_coff_echu_fors_gnoa_hill_invl_nrmn_rbvl_tmra_turo_ulla_weem, _ = NONE, ...)
+# #21: reclst_CPF_MSTIDmodel (e.g. bank_crdx_cwn2_ftdn_mena_mgrv_pbot_spwd_unsw_vlwd_wfal, _ = NONE, ...)
+# #22: reclst_CPF_phaseamb_fixing (e.g. albu_blck_cble_coff_echu_fors_gnoa_hill_invl_nrmn_rbvl_turo_ulla_weem, _ = NONE, ...)
+# #23: reclst_rover_like_static (e.g. bath_ckwl_cwra_dksn_lgow_mudg_obrn_orng_prce_rgln_ryls_str1_tid1, - = NONE,...)
+# #24: reclst_rover_like_kin (e.g. airl_car0, _ = NONE, ...)
+# #25: external_sp3e_file (no/sp3e_file_including_path-example: ~/w/datasets/s3e.high_rate/clk_5s/clk_sp3_2_s3e.2008.139.cod.5sec.4cosmic/sp3e_clk.lst)
+# #26: precise_orbits_set (e.g. igs, igu, cod...)
+# #27: external_coordinates_file (n -IGS sinex- / h -RINEX header- / r -Very raw from GPS sat. in view- / file, e.g. ~/w/datasets/coordinates/permanent_receivers/xyz.tot.all)
+# #28: dra_iono_grid (deg. e.g. 3 or -99)
+# #29: dlat_iono_grid (deg. e.g. 2, or c.pri full path file if dra_iono_grid=-99, e.g. ~/dat/c.pri)
+# #30: lat0_iono_grid (deg., e.g. -60)
+# #31: lat1_iono_grid (deg. e.g. -5)
+# #32: ver_mi2pre_program (e.g. 2.1.1)
+# #33: ver_mi2pre_nml (e.g. CPF+User_v0)
+# #34: ver_pre2mo_program (e.g. 3.4.3)
+# #35: ver_pre2mo_nml (e.g. CPF+User_v0)
+# #36: second_run_to_remove_filter_postfit_outliers (y/n)
+# #37: typical_plot_behaviour (view/noview)
+# #38: nviews_min_per_sat_in_common_with_refrec (0, all, k, k>0); REMARK: only applicable when refrec != _ 
+# #39: itropo_model (1/2/3)
+# #40: prefits_w_fixDDamb_from_prefits (y/n)
+# #41: prefits_w_fixDDamb_from_filter (y/n)
+# #42: max_number_iterations_to_fixDDamb_from_filter (e.g. 3)
+#
+
+
+	if ( $reclst != "_" ) then
+		echo ${bindir1}/iono_and_geo_precise_GNSS_modelling.v$tomion_pp_script_ver.scr $wkdir_ext rinex NA gathering_rinex_files generating_prefits $year $doy 0 $year $doy 23.9999 _ 25 $localrep_RINEX $rinex_sampling_time_in_seconds $rinex_sampling_time_in_seconds $rinex_sampling_time_in_seconds $rinex_sampling_time_in_seconds $rinex_sampling_time_in_seconds $reclst _ _ _ _ n $precise_orbits_set $external_coordinates_file 90 34 -85 85 2.2.0 iono-ti-only  3.4.3.1 NA n noview all 1 n n 1
+		${bindir1}/iono_and_geo_precise_GNSS_modelling.v$tomion_pp_script_ver.scr $wkdir_ext rinex NA gathering_rinex_files generating_prefits $year $doy 0 $year $doy 23.9999 _ 25 $localrep_RINEX $rinex_sampling_time_in_seconds $rinex_sampling_time_in_seconds $rinex_sampling_time_in_seconds $rinex_sampling_time_in_seconds $rinex_sampling_time_in_seconds $reclst _ _ _ _ n $precise_orbits_set $external_coordinates_file 90 34 -85 85 2.2.0 iono-ti-only  3.4.3.1 NA n noview all 1 n n 1
+
+	#echo "PROV.EXIT"
+	#exit -1
+
+		ls -l ${wkdir_lead_chars}*/prefits/prefits.gz
+		rm -f TI.tmp
+		zgrep TI-CLASSIC4 ${wkdir_lead_chars}*/prefits/prefits.gz > TI.tmp
+		wc -l TI.tmp
+
+		if ( $delete_tmpdir_and_files ) then
+                 rm -f ${wkdir_lead_chars}*
+                endif
+	endif
+
+#
+# STEP 2. Gathering and extracting VTEC info. from IONEX file
+#
+	~/usr/local/bin/wget_gps_data.scr $year $doy ionex 1Hz n 0 24  localrep first y $ionexid
+
+	set ionexfile=$ionexid${doyf}0.${yy}i
+
+##############
+
+if ( -f $ionexfile.Z ) then
+	#zcat ./$agency$doyf"0."$yy"i.Z" | gawk -f $bindir/ionex2plotlst6b.awk
+	zcat ./${ionexfile}.Z | gawk -f $bindir/ionex2plotlst6b.awk
+	echo $ionexid" "$doyf" "$yy
+else
+	echo
+	#echo "WARNING: Non-existing IONEX file "$ionexfile".Z"
+	echo "ERROR: Non-existing IONEX file "$ionexfile".Z"
+	echo "(extraction of *info*, TEC.??? and RMS.??? files skipped)"
+	echo "EXECUTION HALTED"
+	exit -1
+	echo
+endif
+
+
+	foreach rec ( $* )
+
+		set tifile=ti.$year.${doyf}.${rec}.gz
+                #set tic4full_file=tic4full2.${ionexid}.${year}${doyf}.${rec}.gz
+                set tic4full_file=tic4full3.${ionexid}.${year}${doyf}.${rec}.gz
+
+		if ( -f $tic4full_file ) then
+			rm -f nada2
+			zcat $tic4full_file > nada2
+			if ( ! ( -z nada2 ) ) then
+				echo
+				echo "WARNING: Existing non-zero file "$tic4full_file
+				echo " (skipping its generation from tifile) "
+				goto plotting
+			endif
+		endif
+
+		rm -f $tifile
+		grep -w $rec TI.tmp | gzip > $tifile
+#TI-CLASSIC4 record (see description of format in the first 52 fields described below -[A]- or in ftp://chapman.upc.es/.formats/ti-classic4-full.format.txt)
+		ls -l $tifile
+		zcat $tifile | wc -l
+
+#
+
+#
+#TODO: To upgrade ~/bin/ti2ionex_2_stec_new_v15.f to ~/bin/ti2ionex_2_stec_new_v16.f adding a new
+# output fmt_ticlassic4full providing a file similar (but removing redundant fields like second mapping 
+# computation) to ftp://chapman.upc.es/.formats/ti-classic4-ext2.format.txt
+# instead of ftp://chapman.upc.es/.formats/stec_new_v12ext2.format.txt
+# 
+#
+		#zcat $tifile | ${bindir}/ti2ionex_2_stec_new_v17 fmt_ticlassic4full2 n $ionexid $elemin4align $konmin4gim_stec $stdev_bi_max4gimcal_tecu | gzip > $tic4full_file
+		zcat $tifile | ${bindir}/ti2ionex_2_stec_new_v$ti2ionex_2_stec_new_ver fmt_ticlassic4full3 n $ionexid $elemin4align $konmin4gim_stec $stdev_bi_max4gimcal_tecu $rinex_sampling_time_in_seconds | gzip > $tic4full_file
+
+		plotting:
+
+		ls -l $tic4full_file
+		zcat $tic4full_file | wc -l
+
+		echo
+		pwd
+		echo ${wkdir_lead_chars}'*'/apriori_rec_coordinates/map/tmp.tot
+		ls -l  ${wkdir_lead_chars}*/apriori_rec_coordinates/map/tmp.tot
+		grep $rec ${wkdir_lead_chars}*/apriori_rec_coordinates/map/tmp.tot | head -n 1 | gawk '{printf "%4d",int($2+.5)}'
+		#echo "PROV.EXIT"
+		#exit -1
+		set lon = `grep $rec ${wkdir_lead_chars}*/apriori_rec_coordinates/map/tmp.tot | head -n 1 | gawk '{printf "%4d",int($2+.5)}'`
+		echo "lon = "$lon
+		set elat = `grep $rec ${wkdir_lead_chars}*/apriori_rec_coordinates/map/tmp.tot | head -n 1 | gawk '{printf "%3d",int($3+.5)}'`
+		echo "elat = "$elat
+		set ehm = `grep $rec ${wkdir_lead_chars}*/apriori_rec_coordinates/map/tmp.tot | head -n 1 | gawk '{printf "%7d",int($4+.5)}'`
+		echo "ehm = "$ehm
+
+		if ( $plots == "y" || $plots == "Y" ) then
+###			sed s/TIC4FULL_FILE/$tic4full_file:r$plots_file_template:r:r/g ${templatesdir1}/${plots_file_template} | sed s/REC/${rec}/g | sed s/AGENCY1/${ionexid}/g | sed s/LON/${lon}/g | sed s/ELAT/${elat}/g | sed s/EHM/${ehm}/g > $tic4full_file:r$plots_file_template:r
+			sed s/TIC4FULL_FILE/$tic4full_file:r/g ${templatesdir1}/${plots_file_template} | sed s/REC/${rec}/g | sed s/AGENCY1/${ionexid}/g | sed s/LON/${lon}/g | sed s/ELAT/${elat}/g | sed s/EHM/${ehm}/g | sed s/YEAR/${year}/g | sed s/DOY/${doyf}/g > $tic4full_file:r$plots_file_template:r
+			ls -l $tic4full_file:r$plots_file_template:r
+			gnuplot $tic4full_file:r$plots_file_template:r
+			ls -l $tic4full_file:r*.png
+		endif
+
+		nextrec2:
+
+	end
+
+	if ( $delete_tmpdir_and_files ) rm -f TI.tmp
+
+endif
+
+####################################################################
+#
+# FORMATS of the main generated files
+#
+####################################################################
+#
+# [A]  TI-CLASSIC4 record : 		fields 1-52
+#      TI-CLASSIC4-FULL records:	fields 1-58
+# among:
+# 
+# 1 14				iyyobs			Last two digits of year
+# 2 1				idoyobs			Day of year
+# 3 0.016666666667		tsecdayobs/3600.d0	GPS time / hours of the GPS day
+# 4 chlw			rec			Receiver Id. (4 digits)
+# 5 2				iprn			GPS PRN Id.
+# 6 12.096145			sele0			Spherical elevation above the horizon / deg
+# 7 6370.3228669		rrec/1.d+3		Geocentric distance of receiver / km
+# 8 228.16751280		rarec			Right ascension of receiver / deg
+# 9 37.97766827			xlatrec			Latitude of receiver / deg
+# 10 26886.9678631		rsat/1.d+3		Geocentric distance of GPS satellite / km
+# 11 159.93744864		rasat			Right ascension of GPS satellite / deg
+# 12 13.76600845		xlatsat			Latitude of satellite / deg
+# 13 -0.231952644884586E+01	xli			Observed LI=L1-L2 / meters
+# 14 TI-CLASSIC4		"label"			"TI-CLASSIC4"
+# 15 2				narch2			Number of continuous arch for the transmitter - receiver pair
+# 16 0.129692438043000E+09	carrier1		Carrier phase in first frequency, as it appears in RINEX file
+# 17 0.101059052137000E+09	carrier2		Carrier phase in second frequency, as it appears in RINEX file
+# 18 24679650.279		pseudorange1		Pseudorange in first frequency, as it appears in RINEX file
+# 19 24679652.590		pseudorange2		Pseudorange in second frequency, as it appears in RINEX file
+# 20 T				cycleslip2		Is there a cycle slip? / T = true or F = false
+# 21 -0.3488734E-03		d2li			Double difference in time of LI=L1-L2 / meters
+# 22 0.4867623E+04		d2Li_max		Maximum allowable double difference in time of LI=L1-L2 to avoid the cycle-slip mark / meters
+# 23 -0.2153701E+00		dBw			Single time-difference of Bw=Lw-Pn (Melbourne-Wubbena combination) / meters
+# 24 0.1446447E+03		dBw_max			Maximum allowable single time-difference of Bw=Lw-Pn to avoid the cycle-slip mark / meters
+# 25 30.00			dtsec_ob1		Time interval for observations / seconds
+# 26 0.0000			stec0			A priori STEC value / meters [typically NOT USED]
+# 27 0.0000			stec0_ray_tracing	Another priori STEC value / meters [typically NOT USED]
+# 28 0.0000			stec0_apriori_iono_rt_par Another priori STEC value / meters [typically NOT USED]
+# 29 2958.59102			xlength_ray_tracing	Length of the transmitter - receiver ray within the voxel-covered region (i.e. the assumed ionosphere) / km
+# 30 4				nilluc			Number of illuminated cells
+# 31 24820.57844		xlen_line_of_sight	Lenght of line of sight / km
+# 32 2958.59102			xlen_all_sectors	Another length of the transmitter - receiver ray within the voxel-covered region / km
+# 33 -99.90			sflux1			Assumed solar flux [typically NOT USED]
+# 34 -99.90			ssn1			Assumed Sun Spot Number [typically NOT USED]
+# 35 -3050945.050		(recxyz0_(i9,irec),i9=1,3) WGS84 X receiver coordinate / meters
+# 36 3988270.864					WGS84 Y receiver coordinate / meters
+# 37 3920005.516					WGS84 Z receiver coordinate / meters
+# 38 13377625.171		(satxyz(j9),j9=1,3)	WGS84 X satellite coordinate / meters
+# 39 22427983.103					WGS84 Y satellite coordinate / meters
+# 40 6397949.638					WGS84 Z satellite coordinate / meters
+# 41 56658.00069444		tdjmobs			Observation time / modified julian days
+# 42 450.0			hionokm1		Assumed ionospheric effective height / km
+# 43 0.2441042417E+01		xmapping_ion		Corresponding mapping function value
+# 44 213.070			xraion			Right Ascension of the corresponding ionospheric pierce point / deg
+# 45 36.547			xlation			Latitude of the corresponding ionospheric pierce point / deg
+# 46 112.317			xlonion			Longitude of the corresponding ionospheric pierce point / deg
+# 47 281.400			rasun			Right Ascension of the Sun / deg
+# 48 -23.023			decsun			Latitude of the Sun / deg
+# 49 180.648			xlonsun			Longitude of the Sun / deg
+# 50 0.23090420E+01		pi1			PI=P2-P2 / meters
+# 51 -0.99000000E+02		xI2_l			Second order ionospheric correction term fo Lc
+# 52 -0.99000000E+02		xI2_p			Second order ionospheric correction term for Lc
+# 53 uqrg			iaac_TEC_detr		Ionospheric Associate Analysis Center
+# 54 29.3219			stec_GIM[ii] / TECU	Slant Total Electron Content provided directly by the GIM / TECU
+# 55 32.5130			stec_LI_alig_GIM[ii] / TECU Slant Total Electron Content from observed LI=L1-L2 calibrated with the GIM / TECU
+# 57 0.0540			Std.Dev. BI / TECU	Standard deviation of the LI=L1-L2 ambiguity (BI) calibration / meters
+# 58 618			nobs_BI			Number of observations used in the LI=L1-L2 ambiguity (BI) calibration

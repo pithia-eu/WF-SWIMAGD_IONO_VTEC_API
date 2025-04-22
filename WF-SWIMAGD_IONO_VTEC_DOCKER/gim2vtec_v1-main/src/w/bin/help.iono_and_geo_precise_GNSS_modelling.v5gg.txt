@@ -1,0 +1,79 @@
+0
+
+Usage: /home/ionsat-tools-user/w/bin/iono_and_geo_precise_GNSS_modelling.v5gg.scr -with the following arguments-  
+ #1: run_ID_extension (e.g. LIDAR_flight_SE_Autralia)   
+ #2: source_of_measurements: rinex or messages_input (e.g. messages_input)
+ #3: messages_input_file (in case of selecting 'messages_input' in previous option, e.g. ~/wrt/run/auditor_test_generating_messages_input/messages1.input.auditor.p13-14.02.2017.gz)
+ #4: run_level_start (e.g. RINEX_and_nav_files_adquisition [*])
+ #5: run_level_end (e.g. prefits [*])
+	[*] run levels: 
+          dummy_start
+		gathering_rinex_files
+		gathering_orbits_clocks
+		gathering_apriori_rec_coordinates
+		map_with_involved_receivers
+		voxels_definition
+		gathering_ephemeris_message
+		gathering_C1-P1
+		gathering_GPS_constellation_status
+		generating_messages_input
+		expected_vs_observed_satellite_visibility
+		generating_prefits
+		analyzing_prefits_phase_cont_arc_id_vs_time
+		generating_messages_output
+          generating_messages_output_after_removing_filter_postfit_outliers
+          generating_messages_output_after_fixing_DDamb_from_filter
+          generating_gipsy_output
+		analyzing_messages_output_DDDprefits_Lc
+		analyzing_messages_output_DDNw_from_BcBi_vs_from_MW
+		analyzing_messages_output_actual_fixing_ambiguity_rates
+		analyzing_messages_output_VTEC_vs_GIM_VTEC
+		analyzing_messages_output_receiver_coordinates
+		analyzing_messages_output_dcbs
+		analyzing_messages_output_satellite_clocks_vs_IGS
+		analyzing_messages_output_tropospheric_estimation_vs_IGS
+          analyzing_messages_output_tropospheric_estimation_vs_IGS_Gipsy
+          analyzing_messages_output_tropospheric_estimation_vs_COD
+          analyzing_messages_output_tropospheric_estimation_vs_JPL
+		analyzing_messages_output_dstec_adjustment
+		analyzing_messages_output_postfit_individual_residuals
+		analyzing_messages_output_STEC_from_obs_and_ambiguities_and_doing_TEC_interpolation
+		STECs_comparison_w_GIMs_prep_and_plots
+		STECs_comparison_w_GIMs_statistics
+ #6: year0 (e.g. 2014)
+ #7: doy0 (e.g. 112)
+ #8: hh0 (e.g. 0)
+ #9: year1 (e.g. 2014)
+ #10: doy1 (e.g. 113)
+ #11: hh1 (e.g. 4)
+ #12: refrec (e.g. tmra)
+ #13: elemin_refsat (in degrees, e.g. 25)
+ #14: localrep_RINEX (e.g. /d4/home/ionex4/w/localrep/rinex/piom_fipp/LIDAR_flight)
+ #15: dtsec_initial_RINEX (e.g. 30)
+ #16: dtsec_down_CPF_TOMION (e.g. 300)
+ #17: dtsec_down_CPF_MSTIDmodel (e.g. 30)
+ #18: dtsec_down_rover_like_static (e.g. 30)
+ #19: dtsec_down_rover_like_kin (e.g. 1)
+ #20: reclst_CPF_TOMION (e.g. albu_blck_cble_coff_echu_fors_gnoa_hill_invl_nrmn_rbvl_tmra_turo_ulla_weem, _ = NONE, ...)
+ #21: reclst_CPF_MSTIDmodel (e.g. bank_crdx_cwn2_ftdn_mena_mgrv_pbot_spwd_unsw_vlwd_wfal, _ = NONE, ...)
+ #22: reclst_CPF_phaseamb_fixing (e.g. albu_blck_cble_coff_echu_fors_gnoa_hill_invl_nrmn_rbvl_turo_ulla_weem, _ = NONE, ...)
+ #23: reclst_rover_like_static (e.g. bath_ckwl_cwra_dksn_lgow_mudg_obrn_orng_prce_rgln_ryls_str1_tid1, - = NONE,...)
+ #24: reclst_rover_like_kin (e.g. airl_car0, _ = NONE, ...)
+ #25: external_sp3e_file (no/sp3e_file_including_path-example: ~/w/datasets/s3e.high_rate/clk_5s/clk_sp3_2_s3e.2008.139.cod.5sec.4cosmic/sp3e_clk.lst)
+ #26: precise_orbits_set (e.g. igs, igu, cod...)
+ #27: external_coordinates_file (n -IGS sinex- / h -RINEX header- / r -Very raw from GPS sat. in view- / file, e.g. ~/w/datasets/coordinates/permanent_receivers/xyz.tot.all)
+ #28: dra_iono_grid (deg. e.g. 3 or -99)
+ #29: dlat_iono_grid (deg. e.g. 2, or c.pri full path file if dra_iono_grid=-99, e.g. ~/dat/c.pri)
+ #30: lat0_iono_grid (deg., e.g. -60)
+ #31: lat1_iono_grid (deg. e.g. -5)
+ #32: ver_mi2pre_program (e.g. 2.1.1)
+ #33: ver_mi2pre_nml (e.g. CPF+User_v0)
+ #34: ver_pre2mo_program (e.g. 3.4.3)
+ #35: ver_pre2mo_nml (e.g. CPF+User_v0)
+ #36: second_run_to_remove_filter_postfit_outliers (y/n)
+ #37: typical_plot_behaviour (view/noview)
+ #38: nviews_min_per_sat_in_common_with_refrec (0, all, k, k>0); REMARK: only applicable when refrec != _ 
+ #39: itropo_model (1/2/3)
+ #40: prefits_w_fixDDamb_from_prefits (y/n)
+ #41: prefits_w_fixDDamb_from_filter (y/n)
+ #42: max_number_iterations_to_fixDDamb_from_filter (e.g. 3)

@@ -1,0 +1,356 @@
+#$Id: GPS_Receiver_Types 55319 2017-04-24 18:26:28Z kjmiller $
+#
+# This file contains classifications for GPS receivers, as used by 'ninja -F'
+# and other GIPSY-OASIS front-end code.
+#
+# All non-data lines must begin with '#'. Blank lines are not allowed.
+# The order of columns in the table must be preserved.
+#
+# The first 20 columns are allocated to the exact receiver type. The algorithm
+# that matches receiver types should be case insensitive and may need to handle
+# extra white space.
+#
+# The remaining columns are free form, white space delimited.
+#
+# The C1-P1 class indicates whether C1-P1 biases need to be removed:
+# 0: C1-P1 classification unknown
+# 1: Cross correlated receiver. Needs C1->C1+b, P2->P2+b.
+# 2: C1 reported in place of P1. Needs C1->C1+b.
+# 3: L1,L2,C1,P1,P2 reported as consistent set. No bias removal needed
+# if P1 reported. From GIPSY version 6.1 onward, if C1 reported but P1
+# not reported, ninja will apply bias, C1->C1+b.
+#
+# Fixtags has the value 1 if clockprep -fixtags is needed, 0 otherwise.
+# The value has been set to 1 in unknown cases. The most recent version of
+# clockprep does not need to know the receiver type in most cases, and this
+# information is not currently used by ninja -F.
+#
+# IGS has the value 1 if this receiver type is an exact match to one of the
+# type strings in ftp://igscb.jpl.nasa.gov/pub/station/general/rcvr_ant.tab
+# and 0 otherwise.
+#
+# Primary information sources:
+#  ftp://igscb.jpl.nasa.gov/pub/station/general/rcvr_ant.tab
+#  https://goby.nrl.navy.mil/IGStime/index.php#P1-C1
+#  clockprep source code
+#
+# When adding a new receiver, or modifying the C1-P1 flag for an existing
+# receiver, please be sure to use the script /goa/local/bin/chkRecType_gd2p.py.
+# This file currently needs some manual input from users, but later versions
+# will hopefully be more automated. But, it should be fully documented in terms
+# of how to use it.
+#
+# From GIPSY version 6.2, this file is only used to correct the P2 observable
+# for the cross correlated receivers. Ninja no longer uses this file to 
+# correct P1 because it has been updated to automatically select the P1
+# observable from the RINEX or to built it from C1 using the CA-P table.
+# However, note that, for RINEX v2.11, by looking at the observable list
+# it is not possible to detect the origin of the P2 (actual P2 or cross 
+# correlated, X2), therefore the file is still needed for this case. 
+# For instance, during AS ON periods, types 1 and 2 would report 
+# C1/X2 and C1/P2 respectively, but in the first case the correction in 
+# P2 is needed.
+#
+# Receiver Type      C1-P1   Fixtags IGS
+AOA BENCHMARK ACT    3       0       1
+AOA ICS-4000Z        1       0       1  
+AOA ICS-4000Z ACT    3       0       1
+AOA RASCAL-12        0       1       1 
+AOA RASCAL-8         0       1       1 
+AOA SNR-12 ACT       3       0       1
+AOA SNR-8000 ACT     3       0       1
+AOA SNR-8100 ACT     3       0       1
+AOA TTR-12           0       1       1 
+AOA TTR-4P           0       1       1 
+#
+# Receiver Type      C1-P1   Fixtags IGS
+ASHTECH              3       1       0  # Generic Ashtech
+ASHTECH 3DF-XXIV     0       1       1
+ASHTECH D-XII        0       1       1
+ASHTECH GG24C        0       1       1
+ASHTECH G-XII        0       1       1
+ASHTECH LCS-XII      0       1       1
+ASHTECH LM-XII3      2       1       1
+ASHTECH L-XII        0       1       1
+ASHTECH MICROZ       3       1       1
+ASHTECH MS-XII       0       1       1
+ASHTECH M-XII        0       1       1
+ASHTECH M-XII0C      0       1       0  # Misnamed ASHTECH M-XII (at CHAB)
+ASHTECH P-XII3       2       1       1
+ASHTECH RANGER       0       1       1
+ASHTECH SUPER-CA     0       1       1
+ASHTECH S-XII        0       1       1
+ASHTECH UZ-12        3       1       1
+ASHTECH Z-12         3       1       0
+ASHTECH Z-18         3       1       0
+ASHTECH Z18          3       1       1
+ASHTECH Z-FX         3       1       0
+ASHTECH Z-X          3       1       1
+ASHTECH Z-XII        3       1       0
+ASHTECH Z-XII3       3       1       1
+ASHTECH Z-XII3GETT   3       1       1
+ASHTECH Z-XII3T      3       1       1
+ASHTECH_Z-XII3       3       1       0  # Misnamed ASHTECH Z-XII3
+ASHTECH Z-X113       3       1       1  # Misnamed ASHTECH Z-XII3 (at MAC1)
+Ashtech Z Series     3       1       0  # Generic
+LM-XII               2       1       0  # Misnamed ASHTECH LM-XII3
+LM-XII3              2       1       0  # Misnamed ASHTECH LM-XII3
+M-XII                2       1       0  # Misnamed ASHTECH LM-XII3
+P-XII3               2       1       0  # Misnamed ASHTECH P-XII3
+P-XII                2       1       0  # Misnamed ASHTECH P-XII3
+Z-XII3               3       1       0  # Misnamed ASHTECH Z-XII3
+Z-XII                3       1       0  # Misnamed ASHTECH Z-XII3
+ZY12                 3       1       0  # Misnamed ASHTECH ZY-12
+#
+# Receiver Type      C1-P1   Fixtags IGS
+BLACKJACK            3       1       0  # Fixtags unknown
+JPL BLACKJACK        3       1       0  # Fixtags unknown
+#
+BLE 4000 SSI         1       1       0  # Misspelled TRIMBLE 4000SSI?
+#
+CMC ALLSTAR 12       0       1       1
+CMC ALLSTAR OEM      0       1       1
+#
+DNREC                0       1       0  # C1-P1, fixtags unknown. CORS:DNRC
+#
+ESA/ISN GNSS         0       1       1
+#
+# Receiver Type      C1-P1   Fixtags IGS
+ITT 3750300          3       0       1  # True P1,P2 per GAMIT rcvant.txt
+# Receiver Type      C1-P1   Fixtags IGS
+Javad Legacy-E       3       0       0
+JPS DELTA            3       0       0
+JPS EUROCARD         3       0       1
+JPS E_GGD            3       0       1
+JPS EGGDT            3       0       1
+JPS LEGACY           3       0       1
+JPS LEGACY GGD       3       0       0
+JPS ODYSSEY          0       1       1
+JPS REGENCY          0       1       1
+JAVAD DELTA          3       0       0  # Likely JPS DELTA
+Javad GGD-160T       3       0       0
+JAVAD TRE_G2T DELTA  3       0       1
+JAVAD TRE_G2TH SIGMA 3       0       1  # True P1,P2 per GAMIT rcvant.txt
+JAVAD TRE_3 DELTA    3       0       1
+JAVAD TRE_G3TH       3       0       1
+JAVAD TRE_G3TH DELTA 3       0       1
+JAVAD TRE_G3T DELTA  3       0       0  # Same as JAVAD TRE_G3TH DELTA
+JAVAD TRE_G3TH SIGMA 3       0       1
+JAVAD TRE_G3T SIGMA  3       0       1
+JAVAD TRE_3N DELTA   3       0       1
+#
+# Receiver Type      C1-P1   Fixtags IGS
+LEICA ATX1230        0       0       1  # C1-P1, fixtags unknown
+LEICA CRS1000        2       0       1
+LEICA GMX901         0       1       1  # C1-P1, fixtags unknown
+LEICA GMX902         2       1       1  # fixtags unknown
+LEICA GMX902GG       0       1       1  # C1-P1, fixtags unknown
+LEICA GR10           2       1       1  # fixtags unknown
+LEICA GR25           2       1       1  # fixtags unknown
+LEICA GR50           2       1       1  # fixtags unknown
+LEICA GX1210         3       1       1  # fixtags unknown
+LEICA GX1220         3       1       1  # fixtags unknown
+LEICA GX1230         3       1       1  # fixtags unknown
+LEICA GX1230GG       3       1       1  # fixtags unknown
+LEICA GX1230+GNSS    2       1       1  # fixtags unknown
+LEICA GRX1200        2       1       1  # fixtags unknown
+LEICA GRX1200+       2       1       1  # fixtags unknown
+LEICA GRX1200+GNSS   2       1       1  # fixtags unknown
+LEICA GRX1200GGPRO   2       1       1  # fixtags unknown
+LEICA GRX1200PRO     2       1       1  # fixtags unknown
+LEICA_GRX1200PRO     2       1       1  # fixtags unknown
+LEICA GRX1200LITE    2       1       1  # fixtags unknown
+LEICA MC1000         2       0       1
+LEICA MC500          2       1       1
+LEICA RS500          2       0       1
+LEICA SR260          0       1       1
+LEICA SR261          0       1       1
+LEICA SR299          0       1       1
+LEICA SR299E         0       1       1
+LEICA SR399          0       1       1
+LEICA SR399E         0       1       1
+LEICA SR510          2       1       1  # C1-P1 assumed same as 510,520
+LEICA SR520          2       1       1
+LEICA SR530          2       1       1
+LEICA SR9400         0       1       1
+LEICA SR9500         2       1       1  # From p1c1bias.hist. CORS uses.
+LEICA SR9600         2       0       1
+#
+MINIMAC 2816         0       1       1
+MINIMAC 2816AT       0       1       1
+#
+ROCKWELL ZODIAC OEM  0       1       1
+#
+# Receiver Type      C1-P1   Fixtags IGS
+NAVCOM NCT-2000D     3       1       1  # C1-P1, fixtags unknown
+NAVCOM SF-2000       3       1       1  # C1-P1, fixtags unknown
+NAVCOM NCT-2030M     3       1       1  # C1-P1, fixtags unknown
+NAVCOM SF-2040G      3       1       1  # C1-P1, fixtags unknown
+NAVCOM SF-2050G      3       1       1  # C1-P1, fixtags unknown
+NAVCOM SF-2050M      3       1       1  # C1-P1, fixtags unknown
+NAVCOM SF-2050R      3       1       1  # C1-P1, fixtags unknown
+NAVCOM SF-3050       3       1       1  # C1-P1, fixtags unknown
+NAVCOM RT-3010S      3       1       1  # C1-P1, fixtags unknown
+NAVCOM RT-3020S      3       1       1  # C1-P1, fixtags unknown
+NAVCOM RT-3020M      3       1       1  # C1-P1, fixtags unknown
+NAVCOM NCT-2000D     3       1       1
+
+#
+# Receiver Type      C1-P1   Fixtags IGS
+NOV EURO4-1.00-222   2       0       1
+NOV MILLEN-RT2       2       0       1
+NOV MILLEN-RT2OS     2       0       1
+NOV MILLEN-STD       2       0       1
+NOV MILLEN-STDW      2       0       1
+NOVATEL MILLENIUM    2       0       0
+NOV OEMV3            2       0       1
+NOV OEMV3-RT2        2       0       1
+NOV OEM4-G2          2       0       1
+NOV WAAS             2       0       0
+NOV WAASGII          2       0       1
+NOVATEL OEM4         2       0       0
+NovWaas              2       0       0
+#
+# Receiver Type      C1-P1   Fixtags IGS
+POLARX2              3       1       0  # Fixtags unknown
+#
+# Receiver Type      C1-P1   Fixtags IGS
+DSN ROGUE            1       0       0
+MINI-ROGUE SNR-8C    1       0       0
+ROGUE                1       0       0  # Old generic Rogue              
+ROGUE SNR-           1       0       0  # Generic
+ROGUE SNR-12         1       0       1
+ROGUE SNR-12 RM      1       0       1
+ROGUE SNR-8          1       0       1
+ROGUE SNR-800        1       0       1
+ROGUE SNR-8000       1       0       1
+ROGUE SNR-8100       1       0       1
+ROGUE SNR-8A         1       0       1
+ROGUE SNR-8C         1       0       1
+ROGUE 8C             1       0       0  # Misnamed ROGUE SNR-8C
+SNR-8C MINI-ROGUE    1       0       0
+TURBOROGUE           1       0       0
+#
+# Receiver Type      C1-P1   Fixtags IGS
+SEPT POLARX2         3       1       1  # Fixtags unknown
+SEPT POLARX2E        3       1       1  # Fixtags unknown
+SEPT POLARX3ETR      3       1       1  # Fixtags unknown
+SEPT POLARX4         3       1       1  # Fixtags unknown
+SEPT POLARX4TR       3       1       1  # Fixtags unknown
+SEPT POLARXS         3       1       1  # Fixtags unknown
+SEPT ASTERX3         3       1       1  # Fixtags unknown
+SEPT POLARX5         3       1       1  # Fixtags unknown 
+SEPT POLARX5TR       3       1       1  # Fixtags unknown 
+#
+# Receiver Type      C1-P1   Fixtags IGS
+SIMULA               3       0       1  # Fixtags unknown
+#
+# Receiver Type      C1-P1   Fixtags IGS
+SOK RADIAN           0       1       1  # C1-P1, fixtags unknown
+SOK RADIAN_IS        0       1       1  # C1-P1, fixtags unknown
+SOK GSR2600          2       1       1  # C1-P1, fixtags unknown
+SOK GSR2700 RS       2       1       1  # C1-P1, fixtags unknown
+#
+# Receiver Type      C1-P1   Fixtags IGS
+SPP GEODIMETER-L1    0       1       1  # C1-P1, fixtags unknown
+SPP GEOTRACER100     0       1       1  # C1-P1, fixtags unknown
+SPP GEOTRACER3220    0       1       1  # C1-P1, fixtags unknown
+SPP GEOTRACER3320    0       1       1  # C1-P1, fixtags unknown
+#
+# Receiver Type      C1-P1   Fixtags IGS
+TI4100               0       1       1
+#
+# Receiver Type      C1-P1   Fixtags IGS
+TOPCON JPS_LEGACY    3       0       0
+TOPCON GP-DX1        1       1       1
+TOPCON GP-R1         1       1       1
+TOPCON GP-R1D        1       1       1
+TOPCON GP-R1DP       1       1       1
+TOPCON GP-R1DY       1       1       1
+TOPCON GP-R1SD       1       1       1
+TOPCON GP-S1         1       1       1
+TOPCON GP-SX1        1       1       1
+TOPCON TT4000SSI     1       1       1
+TOPCON TURBO-SII     0       1       1
+#
+# Receiver Type      C1-P1   Fixtags IGS
+TPS DELTA            3       0       0  # Assumed equivalent to JPS DELTA
+TPS E_GGD            3       0       1  # Assumed equivalent to JPS E_GGD
+TPS EUROCARD         3       0       1  # Same as JPS Eurocard 
+TPS LEGACY           3       0       1
+TPS HIPER_GD         3       0       1  # Assumed like JPS Eurocard / Legacy
+TPS HIPER_GGD        3       0       1  # Assumed like JPS Eurocard / Legacy
+TPS HIPER_LITE       3       0       1  # Assumed like JPS Eurocard / Legacy
+TPS HIPER_PLUS       3       0       1  # Assumed like JPS Eurocard / Legacy
+TPS NETG3            3       0       1  # Assumed like JPS Eurocard / Legacy
+TPS NET-G3A          3       0       1  # Assumed like JPS Eurocard / Legacy
+TPS ODDYSSEY_1       0       1       1  # Assumed like JPS Odyssey
+TPS ODYSSEY_E        3       1       1  # TPS refers to this as LEGACY_E rx, fixtags unknown
+TPS GB-1000          3       1       1  # C1-P1, fixtags unknown
+TPS MAXOR            3       1       0  # fixtags unknown
+#
+# Receiver Type      C1-P1   Fixtags IGS
+TRIMBLE              1       1       0  # Old generic Trimble
+TRIMBLE 4000 SSI     1       1       0
+TRIMBLE 4000 SST     1       1       0
+TRIMBLE 4000S        1       1       1
+TRIMBLE 4000SE       1       1       1
+TRIMBLE 4000SL       1       1       1
+TRIMBLE 4000SLD      1       1       1
+TRIMBLE 4000SSE      1       1       1
+TRIMBLE 4000 SSE     1       1       1  # Misnamed with space before SSE
+TRIMBLE 4000SSI      1       1       1
+TRIMBLE 4000SSI-SS   1       1       1
+TRIMBLE 4000SST      1       1       1
+TRIMBLE 4000ST       1       1       1
+TRIMBLE 4000ST S     1       1       1
+TRIMBLE 4000SX       1       1       1
+TRIMBLE 4400         0       1       1
+TRIMBLE 4600         0       1       1
+TRIMBLE 4700         2       1       1
+TRIMBLE 4800         0       1       1
+TRIMBLE 5700         2       1       1
+TRIM5700             2       1       1 # Misnamed Trimble 5700
+TRIMBLE 5800         2       1       1 #  Assumed like 5700
+TRIMBLE 7400MSI      0       1       1
+TRIMBLE GEODESIST P  0       1       0
+TRIMBLE MS750        2       1       1
+TRIMBLE R7           2       1       1  # 5700 chassis
+TRIMBLE R8           2       1       1  # Assumed like R7
+TRIMBLE NETRC        2       1       1  # Assumed like R7
+TRIMBLE NETRS        2       1       1  # Assumed like R7
+TRIMBLE_NETRS        2       1       1  # Copy of TRIMBLE NETRS
+TRIMBLE NETR3        2       1       1  # Assumed like R7
+TRIMBLE NETR5        2       1       1  # Assumed like R7
+TRIMBLE NETR8        2       1       1  # Assumed like R7
+TRIMBLE NETR9        2       1       1  # Assumed like R7
+Trimble SPS461       2       1       1  # Assumed like R7 [MHP, 201711_08]
+#
+# Receiver Type      C1-P1   Fixtags IGS
+HEMISPHERE ECLIPSE   3       0       0
+# Receiver Type      C1-P1   Fixtags IGS
+TRSR                 3       0       1  # Fixtags assumed
+#
+# The following are incompletely specified receivers that have been encountered.
+# Receiver Type      C1-P1   Fixtags IGS
+4000SSI              1       1       0  # Assumed TRIMBLE 4000SSI
+5700                 2       1       0  # Assumed TRIMBLE 5700
+GP-R1DY              1       1       0  # Assumed TOPCON GP-R1DY
+# Generic type receivers
+# Receiver Type      C1-P1   Fixtags IGS
+GENERIC_P1           3       0       0
+GENERIC_C1           2       0       0
+GENERIC_UNK          0       0       0
+#
+#ADDED FOR GDGPS PROCESSING
+LEIAR25.R3 LEIT      3       0       0
+UNKNOWN UNKNOWN      3       0       0
+RTCM 3.1 NETG3       3       0       0
+RTCM 3.1 GRX1200GGPR 3       0       0
+SEPT ASTERX3         3       1       1  
+UNKNOWN              1       0       0
+
+
+
+
+

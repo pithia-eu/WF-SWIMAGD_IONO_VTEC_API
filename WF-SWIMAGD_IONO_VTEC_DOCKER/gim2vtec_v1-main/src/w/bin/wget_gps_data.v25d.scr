@@ -1,0 +1,767 @@
+#!/bin/tcsh -f
+set nonomatch
+#20220121[Qi]: v25d.reorganize rinex downloading
+#20220117[Qi]: v25c.used a third link for uqrg
+#202009_01[HY & MHP]: Main diff. of v24 regarding to v23 is adding Australian CORS and New Zealand GNSS servers for both 1Hz and 30s GPS data.
+#202007_15[QL]: Main diff. of v23 regarding to v22 is try to use http instead of ftp.
+#202004_19[MHP]: Main diff. of v22 regarding to v21 is fixing a BUG for listing, and joining, the 1Hz 15-min files from cddis.
+# 201711_29 [VG]: Added UNAVCO server
+# 201604_20 [DR]: Added aoe server for RT files
+#
+# 201512_10 [DR]:
+# Added Wuhan Univ and CAS explicit FTP server
+# Fixed ionex local dataset dir to /home/ionex4/datasets/ionex/$YEAR/$DOY
+#
+#pending [AGR] ifag FTP / ICC FTP
+#
+#201511_09[AGR] Main diff. of v18d regarding to v18c is reordering first/last options and correcting minor bugs
+#
+#201511_05[AGR]: Main diff. of v18c regarding to v18b is adding GARNER (lox) nrt data 
+#
+#201511_05[AGR]: Main diff. of v18b regarding to v18 is adding the backup option for IONEX files (from version v17d)
+#
+#201502_17[MHP]: Main diff. of v18 regarding to v17 is adding CORS, OMA and EUREF GPS data servers
+#
+#201411_16[MHP]: Main diff. of v16predir regarding to v15predir is including an additional input for final RINEX files at 30 seconds in case of 1Hz NRT source is choosen
+#
+#201408_26[MHP]: Main diff. of v15predir regarding to v14predir is removing some temporal files and avoiding duplicities in the Hatanaka joined 1Hz files...
+#
+#201309_16[MHP]: Main diff. of v14predir regarding to v12predir is adding localrepdir as external option...
+#
+#20120519[MHP]: Main diff. of v12 regarding to v11 is adding an option on whether backing up or not the output file... (at least for RINEX...)
+#
+#20110909[MHP]: Main diff. of v10 reg. to v9 is preserving the Hatanaka file in both localrep (bug fixed) and upper dirs...
+#
+#20110702[MHP]: Trying to incorporate, in a "seemless" way, the sources of 1Hz rinex files...
+#
+#20101201[MHP]: Main diff. of v8 regarding to v7 is adding to an additional otpion of local repository (localrep_sampling, 1Hz or 30s).
+#
+#20101130[MHP]: Main diff. of v7 regarding to v6 is adding a local repository of data (where any available data
+# can be placed directly, or as soft linkg) to be looked for first or last (new input), regarding to the external internet servers.
+#
+#20101005[MHP]: Main diff. of v6 regarding to v5 is the inclusion of IONEX files as an additional kind of GPS file to download.
+#
+#20100706: The only modification of v5 regarding to v4b is the slightly update
+#of server addresses, specifically the change from cddisa to cddis.
+#
+#20090917: The main diff. of v4b regarding to v4 is the sorting of the
+# server calls for rinex files, starting with the more populated in rinex data, up to
+# the less, in order to optimize the downloading time.
+#
+#
+#20090916: Main diff. of v4 regarding to v3c is the incorporation of lox
+#from its http open gate.
+#
+#20090818: Main diff. of v3c regarding to v3b is the usage of option --tries=0
+# in the wget program, by incorporating lox again to the search loop.
+# NOTE: This option does not work in wget !!!. So finally the lox server option
+# has been removed, doing now the same than previous vresion v3b.
+#
+#20090731: Main diff. of v3b regarding to v3 is the removal (by commenting)
+# the lox server, as third option, in case the targetted file is
+# not found in the previous ones (to avoid the halting of the script
+# due to the frequent outages lox is experiencing presently).
+#
+#20080331: Main difference of v3 regarding to v2 is the inclusion
+# of the option to download only RINEX, only navigation file or both
+
+if($# < 10)then
+	echo "Usage: "$0" year doy download_what(rinex,eph,both,ionex) localrep_sampling(1Hz or 30s)  downdate_final_rinex_from_1Hz_to_30s (y/n)  hour0_1Hz (e.g. 0 or 14)  hour1_1Hz (e.g. 24 or 17)  localrep_basedir (e.g. ~/w/localrep/rinex/geonet)  order_to_look_in_localrep_dir(first or last)  backup_in_localrep (y/n)  rec1(or iaac1 for ionex) ... recn(or iaacn for ionex)"
+	exit -2
+endif
+
+echo
+
+#set stas = `gawk '{print toupper($1)}' nn.sta`
+set year = $1
+set yy = `echo $year|gawk '{print substr($1,3,2)}'`
+set doy = `echo $2 | gawk '{printf "%03d",$1}'`
+echo $year $yy $doy
+set dwhat=$3
+set localrep_sampling=$4
+set downdate_final_rinex_from_1Hz_to_30s = $5
+set hour0_1Hz=`echo $6 | gawk '{print 1*$1}'`
+set hour1_1Hz=`echo $7 | gawk '{print 1*$1}'`
+set localrep_basedir=$8
+set order_to_look_in_localrep_dir=$9
+set backup_in_localrep = $10
+
+set ntries=0
+#set ntries=1
+
+set bindir=~/bin
+set bindir2=~/w/bin
+#set localrepdir=${predir}/w/localrep
+#set localrepdir=${predir}/$localrep_basedir
+set localrepdir=${LOCAL_REP_DIR} # DMB: set in global_vars.scr
+
+
+if ( $dwhat == "ionex" ) then
+	#set localrepdir1=/home/ionex4/datasets/ionex/${year}/${doy}
+       set localrepdir1=${localrepdir}/${year}/${doy}
+else
+       set localrepdir1=${localrepdir}/${localrep_sampling}/${year}/${doy}
+endif
+
+#set localrepdir1=${localrepdir}/rinex/${localrep_sampling}/${year}/${doy}
+#set localrepdir1=${localrepdir}/${localrep_sampling}/${year}/${doy}
+
+if ( ! ( -d $localrepdir1 ) ) then
+	mkdir -p $localrepdir1
+endif
+
+#set bindir=~/bin
+
+shift
+shift
+shift
+shift
+shift
+shift
+shift
+shift
+shift
+shift
+
+###
+# pre-check .netrc for downloading data from http
+# DMB: touch netrc with proper credentials
+# if (!(-f ~/.netrc)) then
+# 	touch ~/.netrc
+	
+# 	echo "machine urs.earthdata.nasa.gov login [USERNAME] password [PASSWORD]
+# "  > ~/.netrc
+# endif
+###
+
+#############################
+# Downloading measurement files
+#############################
+if( $dwhat == "rinex" || $dwhat == "both" ) then
+foreach sta0 ( $* )
+	set sta=`echo $sta0 | gawk '{print toupper($1)}'`
+	set sta_l = `gawk 'BEGIN{print tolower("'$sta'")}'`
+	set outfile = ${sta}${doy}"0."${yy}"E"
+	set infile = ${sta_l}${doy}"0."${yy}"d.Z"
+	set INFILE = `echo $infile | gawk '{print toupper($1)}'`
+	set rnxfile = ${sta_l}${doy}"0."${yy}"o.Z"
+	set rnxfile1 = ${sta_l}${doy}"0."${yy}"o.gz"
+	echo $sta_l  $infile $rnxfile
+
+	echo "order_to_look_in_localrep_dir= "$order_to_look_in_localrep_dir
+	echo "infile= "$infile
+	#echo ls -l ${localrepdir}/rinex/${localrep_sampling}/${year}/${doy}/${infile}
+	#ls -l ${localrepdir}/rinex/${localrep_sampling}/${year}/${doy}/${infile}
+	echo ls -l ${localrepdir1}/${infile}
+	ls -l ${localrepdir1}/${infile}
+	echo A
+	if (!(-f ${infile})) then
+		echo C
+		#if( -f ${localrepdir}/rinex/${localrep_sampling}/${year}/${doy}/${infile} ) then
+		if (${order_to_look_in_localrep_dir} == "first" && -f ${localrepdir1}/${infile} && ! -z ${localrepdir1}/${infile}) then
+			echo D
+			echo " "
+			echo " Gathering "$infile" from local repository at "${localrepdir1}
+			#cp -p ${localrepdir}/rinex/${localrep_sampling}/${year}/${doy}/${infile} .
+			cp -p ${localrepdir1}/${infile} .
+			echo " "
+		else
+			echo E
+			if ( ${localrep_sampling} == "30s" ) then
+				echo F
+				wget --tries=$ntries http://anonymous:jason%40ucsd.edu@garner.ucsd.edu/pub/rinex/${year}/${doy}/${infile}
+				if (!(-f ${infile})) then
+					#wget --tries=$ntries  ftp://cddis.gsfc.nasa.gov/gps/data/daily/${year}/${doy}/${yy}d/${infile}
+
+					if ( !(-f ${infile}) ) then
+						wget --tries=$ntries  ftp://www.ngs.noaa.gov/cors/rinex/${year}/${doy}/${sta_l}/${infile}
+						if ( !(-f ${infile}) ) then
+							wget --tries=$ntries  ftp://epncb.oma.be/pub/obs/${year}/${doy}/${INFILE}
+							if (-f ${INFILE}) then
+								mv ${INFILE} ${infile}
+                                                        endif
+							if ( !(-f ${infile}) ) then
+								wget --tries=$ntries ftp://igs.ifag.de/EUREF/obs/${year}/${doy}/${infile}
+								if (!(-f ${infile})) then
+  									# FUTURE ADD-ON: geofons ICC 30-s and 1-Hz
+									##wget --tries=$ntries ftp://ftp.icc.es/geofons/pub/data/gps_stations/rinex24h/$outfile
+									#wget --tries=$ntries ftp://geofons.icc.cat/rinex/diari_30s/RefData.$yy/Month.Nov/Day.$day/$INFILE
+
+									#if (-f ${outfile}) then
+									#	mv ${outfile} ${infile}
+									#else
+									wget --tries=$ntries ftp://data-out.unavco.org/pub/rinex/obs/${year}/${doy}/${infile}
+									if (!(-f ${infile})) then
+										wget --auth-no-challenge "https://cddis.nasa.gov/archive/gnss/data/daily/${year}/${doy}/${yy}d/${infile}"
+
+										if (!(-f ${infile})) then
+											###wget --tries=$ntries ftp://data-out.unavco.org/pub/rinex/obs/${year}/${doy}/${infile}	
+											wget --tries=$ntries ftp://ftp.ga.gov.au/geodesy-outgoing/gnss/data/daily/$year/${yy}${doy}/${infile}
+											if (!(-f ${infile})) then
+												wget --tries=$ntries ftp://ftp.geonet.org.nz/gnss/rinex/$year/$doy/${infile}
+												if (!(-f ${infile})) then
+													wget --tries=$ntries ftp://ftp.geonet.org.nz/gnss/rinex/$year/$doy/$rnxfile1
+													if (!(-f ${infile}) && !(-f $rnxfile1)) then
+	                                                                    				    	if (${order_to_look_in_localrep_dir} == "last" && -f ${localrepdir1}/${infile} && ! -z ${localrepdir1}/${infile}) then
+	
+		                                                                         	   	   		echo " "
+		                                                                             				echo " Gathering "$infile" from local repository at "${localrepdir1}
+		                                                                                			cp -p ${localrepdir1}/${infile} .
+		                                                                        	      			echo " "
+		                                                                     	   			else
+		
+		                                                                        	       			echo "WARNING: Non available data for "${sta_l}
+														endif
+													endif
+												endif
+											endif
+										endif
+                                                                        endif
+									
+								endif
+							endif
+						endif
+					endif
+				endif
+			else
+
+# FUTURE ADD-ON: Implement order_to_look_in_localrep_dir for 1 Hz data
+				echo G
+
+				if ( ${localrep_sampling} == "1Hz" ) then
+					echo "1) HR cddis..."
+
+					set bftpdir=ftp://cddis.gsfc.nasa.gov/pub/gps/data/highrate/${year}/${doy}/${yy}d
+
+					#set hh=0
+					set hh=$hour0_1Hz
+
+#                                        rm -f available_files.tmp
+
+####					while ( $hh < 24 )
+					while ( $hh <= $hour1_1Hz )
+
+					        set hh1=`echo $hh | gawk '{printf "%02d\n",$1}'`
+							echo
+					        echo $hh1
+							echo
+
+					        set ftpdir=${bftpdir}/${hh1}
+					        echo $ftpdir
+
+					        wget --tries=$ntries ${ftpdir}/${sta_l}${doy}"???."${yy}"d.Z"
+
+
+                                                #if ( -f ${sta_l}${doy}"???."${yy}"d.Z" && ! ( -z ${sta_l}${doy}"???."${yy}"d.Z" ) ) then
+                                                #	ls -l ${sta_l}${doy}"???."${yy}"d.Z" >> available_files.tmp
+                                                #endif
+
+					        @ hh ++
+					end
+					#set num_files = `ls ${sta_l}${doy}???"."${yy}"d.Z" </dev/null | wc -l`
+					set num_files = `ls ${sta_l}${doy}???"."${yy}"d.Z" | wc -l`
+					echo "num_files = "$num_files
+					#if (! ($num_files)) then 
+					if ( $num_files != 0 ) then 
+						set bftpdir=https://cddis.nasa.gov/archive/gnss/data/highrate/${year}/${doy}/${yy}d
+#wget --ftp-user anonymous --ftp-password ionex4@chapman.upc.es ftps://gdc.cddis.eosdis.nasa.gov/gnss/data/highrate/2020/001/20d/01/mas100*.20d.Z
+						#set bftpdir=ftps://gdc.cddis.eosdis.nasa.gov/gnss/data/highrate/${year}/${doy}/${yy}d
+						#set hh=0
+						set hh=$hour0_1Hz
+
+	#                                        rm -f available_files.tmp
+
+	####					while ( $hh < 24 )
+						while ( $hh <= $hour1_1Hz )
+
+							    set hh1=`echo $hh | gawk '{printf "%02d\n",$1}'`
+								echo
+							    echo $hh1
+								echo
+
+							    set ftpdir=${bftpdir}/${hh1}
+							    echo $ftpdir
+
+							    wget --auth-no-challenge "${ftpdir}/${sta_l}${doy}*.${yy}d.Z*?list"
+							    #wget --ftp-user anonymous --ftp-password ionex4@chapman.upc.es ${ftpdir}/${sta_l}${doy}"*".${yy}d.Z
+								set data_list = `cat ${sta_l}${doy}*.${yy}d.Z*?list | gawk '{if ($1 != "#") print $1}' `
+								foreach data_i ($data_list)
+									#echo data_i = $data_i
+									wget --auth-no-challenge "${ftpdir}/$data_i"
+								end
+								rm -rf ${sta_l}${doy}*.${yy}d.Z*?list
+
+		                                            #if ( -f ${sta_l}${doy}"???."${yy}"d.Z" && ! ( -z ${sta_l}${doy}"???."${yy}"d.Z" ) ) then
+		                                            #	ls -l ${sta_l}${doy}"???."${yy}"d.Z" >> available_files.tmp
+		                                            #endif
+
+							    @ hh ++
+						end
+					endif
+
+                    rm -f available_files.tmp
+					foreach hfile0 ( ${sta_l}${doy}???"."${yy}"d.Z" )
+						if ( ! ( -z $hfile0 ) ) then
+							ls -l ${sta_l}${doy}???"."${yy}"d.Z" >> available_files.tmp
+						endif
+					end
+					#wc -l ${PWD}/available_files.tmp
+
+					echo "1.5) HR ..."
+
+                    			if ( ( -f available_files.tmp ) && ! ( -z available_files.tmp ) ) then
+						echo "hadflajksdhfla"
+						foreach file1 ( ${sta_l}${doy}???"."${yy}"d.Z" )
+							echo $file1
+							zcat $file1 | ${bindir}/crx2rnx > $file1:r:r.${yy}o
+        					end
+                        			if ( $localrep_sampling == "30s" || $downdate_final_rinex_from_1Hz_to_30s == "n" ) then
+					       		${bindir}/teqc  -phc ${sta_l}${doy}???.${yy}o | ${bindir}/rnx2crx | compress > ${sta_l}${doy}0.${yy}d.Z
+ 						else
+							${bindir}/teqc  -phc ${sta_l}${doy}???.${yy}o |  ${bindir}/teqc -O.dec 30 | ${bindir}/rnx2crx | compress > ${sta_l}${doy}0.${yy}d.Z
+						endif
+						ls -l ${sta_l}${doy}0.${yy}d.Z
+
+						rm -f ${sta_l}${doy}???.${yy}o ${sta_l}${doy}???"."${yy}"d.Z"
+        				else
+						echo "2) HR noaa..."
+
+                                                echo "Non available 1Hz files for "${sta_l}${doy}"???."${yy}" at cddis (looking for them at CORS)"
+#######not sure if need modification
+                                                set bftpdir =  ftp://www.ngs.noaa.gov/cors/rinex/${year}/${doy}
+                                                set hh=$hour0_1Hz
+
+                                                rm -f available_files.cors.tmp
+
+#                                               while ( $hh < 24 )
+                                                while ( $hh <= $hour1_1Hz )
+
+                                                	set hh1=`echo $hh | gawk '{printf "%02d\n",$1}'`
+                                                        echo
+                                                        echo $hh1
+                                                        echo
+                                                        set chh = `echo $hh1 | gawk 'BEGIN{s="abcdefghijklmnopqrstuvwx";l=length(s);for(i=1;i<=l;i++){j=i-1;c[j]=substr(s,i,1)}}{k=+$1;print c[k]}'`
+                                                        echo $chh
+                                                        echo
+                                                        #echo "PROV.EXIT"
+                                                        #exit -1
+
+                                                        #set ftpdir=${bftpdir}/${hh1}
+                                                        set ftpdir=${bftpdir}/${sta_l}
+                                                        echo $ftpdir
+
+                                                        if ( $downdate_final_rinex_from_1Hz_to_30s == "y" ) then
+                                                                set rfile = ${sta_l}${doy}${chh}.${yy}"d.Z"
+                                                        else
+                                                        	set rfile = ${sta_l}${doy}${chh}.${yy}"o.gz"
+                                                        endif
+
+                                                        wget --tries=$ntries ${ftpdir}/${sta_l}${doy}$chh"."${yy}"d.Z"
+
+                                                        if ( -f $rfile && ! ( -z $rfile ) ) then
+                                                                ls -l $rfile >> available_files.cors.tmp
+                                                        endif
+
+                                                        @ hh ++
+
+                                           	end
+
+                                                if ( -f available_files.cors.tmp && ! ( -z available_files.cors.tmp ) ) then
+
+                                                    	if ( $downdate_final_rinex_from_1Hz_to_30s == "y" ) then
+                                                        	foreach file1 ( ${sta_l}${doy}[a-x]"."${yy}"d.Z" )
+                                                                        echo $file1
+                                                                        zcat $file1 | ${bindir}/crx2rnx > $file1:r:r.${yy}o
+                                                                end
+                                                        else
+                                                                foreach file1 ( ${sta_l}${doy}[a-x]"."${yy}"o.gz" )
+                                                                        echo $file1
+                                                                        gunzip -f $file1
+                                                                end
+                                                        endif
+
+                                                        if ( $downdate_final_rinex_from_1Hz_to_30s == "n" ) then
+                                                                ${bindir}/teqc  -phc ${sta_l}${doy}[a-x].${yy}o | ${bindir}/rnx2crx | compress > ${sta_l}${doy}0.${yy}d.Z
+                                                        else
+                                                                ${bindir}/teqc  -phc -O.int 30 ${sta_l}${doy}[a-x].${yy}o |  ${bindir}/teqc -O.dec 30 | ${bindir}/rnx2crx | compress > ${sta_l}${doy}0.${yy}d.Z
+								ls -ltr ${sta_l}${doy}0.${yy}o
+                                                        endif
+
+                                                        ls -l ${sta_l}${doy}0.${yy}d.Z
+
+                                                        #rm -f ${sta_l}${doy}[a-x].${yy}o ${sta_l}${doy}[a-x]"."${yy}"d.Z"
+
+						else 
+#######not sure if need modification
+							echo "Non available 1Hz files for "${sta_l}${doy}"???."${yy}" at CORS (looking for them at GARNER)"
+							echo "3) HR garner..."
+                                                       	set bftpdir =  http://anonymous:jason%40ucsd.edu@garner.ucsd.edu/pub/nrtdata/$year/${doy}
+                                                       	set hh=$hour0_1Hz
+
+                                                       	rm -f available_files.garner.tmp
+
+#                                              	while ( $hh < 24 )
+                                                      	while ( $hh <= $hour1_1Hz )
+
+                                                      		set hh1=`echo $hh | gawk '{printf "%02d\n",$1}'`
+                                                               	echo
+                                                               	echo $hh1
+                                                               	echo
+                                                               	set chh = `echo $hh1 | gawk 'BEGIN{s="abcdefghijklmnopqrstuvwx";l=length(s);for(i=1;i<=l;i++){j=i-1;c[j]=substr(s,i,1)}}{k=+$1;print c[k]}'`
+                                                               	echo $chh
+                                                               	echo
+                                                               	#echo "PROV.EXIT"
+                                                               	#exit -1
+
+                                                               	#set ftpdir=${bftpdir}/${hh1}
+                                                               	set ftpdir=${bftpdir}/${hh1}
+                                                               	echo $ftpdir
+
+                                                               	if ( $downdate_final_rinex_from_1Hz_to_30s == "y" ) then
+                                                                       	set rfile = ${sta_l}${doy}${chh}.${yy}"d.Z"
+                                                               	else
+                                                                       	#set rfile = ${sta_l}${doy}${chh}.${yy}"o.gz"
+                                                                       	set rfile = ${sta_l}${doy}${chh}.${yy}"d.Z"
+                                                               	endif
+
+                                                               	#wget ${ftpdir}/${sta_l}${doy}"???."${yy}"d.Z"
+                                                               	wget --tries=$ntries ${ftpdir}/$rfile
+
+                                                               	if ( -f $rfile && ! ( -z $rfile ) ) then
+                                                                        ls -l $rfile >> available_files.garner.tmp
+                                                               	endif
+
+                                                               	@ hh ++
+
+                                                       	end
+
+                                                        if ( -f available_files.garner.tmp && ! ( -z available_files.garner.tmp ) ) then
+
+                                                       		if ( $downdate_final_rinex_from_1Hz_to_30s == "y" ) then
+                                                                      	foreach file1 ( ${sta_l}${doy}[a-x]"."${yy}"d.Z" )
+                                                                       		echo $file1
+                                                       	                	zcat $file1 | ${bindir}/crx2rnx > $file1:r:r.${yy}o
+                                                       	        	end
+                                                       		else
+                                                       	        	#foreach file1 ( ${sta_l}${doy}[a-x]"."${yy}"o.gz" )
+                                                                       	foreach file1 ( ${sta_l}${doy}[a-x]"."${yy}"d.Z" )
+                                                              	    		echo $file1
+                                                                              	#gunzip -f $file1
+                                                      	                	zcat $file1 | ${bindir}/crx2rnx > $file1:r:r.${yy}o
+                                                                      	end
+                                                               	endif
+
+                                                       	        if ( $downdate_final_rinex_from_1Hz_to_30s == "n" ) then
+                                              	                        ${bindir}/teqc  -phc ${sta_l}${doy}[a-x].${yy}o | ${bindir}/rnx2crx | compress > ${sta_l}${doy}0.${yy}d.Z
+                               	                                else
+                                       	                                ${bindir}/teqc  -phc -O.int 30 ${sta_l}${doy}[a-x].${yy}o |  ${bindir}/teqc -O.dec 30 | ${bindir}/rnx2crx | compress > ${sta_l}${doy}0.${yy}d.Z
+                       	                                        endif
+
+               	                                                ls -l ${sta_l}${doy}0.${yy}d.Z
+
+                                                                #rm -f ${sta_l}${doy}[a-x].${yy}o ${sta_l}${doy}[a-x]"."${yy}"d.Z"
+	
+							else
+
+								echo "Non available 1Hz files for "${sta_l}${doy}"???."${yy}" at GARNER (looking for them at CORS AUSTRALIAN network)"
+								echo "4) HR gov.au..."
+	                                                       	####set bftpdir =  ftp://ftp.ga.gov.au/geodesy-outgoing/gnss/data/highrate/2020/20001/00/
+	                                                       	set bftpdir =  ftp://ftp.ga.gov.au/geodesy-outgoing/gnss/data/highrate/${year}/${yy}${doy}
+	                                                       	set hh=$hour0_1Hz
+	
+	                                                       	rm -f available_files.australiancors.tmp
+	
+	#                                              	while ( $hh < 24 )
+	                                                      	while ( $hh <= $hour1_1Hz )
+	
+	                                                      		set hh1=`echo $hh | gawk '{printf "%02d\n",$1}'`
+	                                                               	echo
+	                                                               	echo $hh1
+	                                                               	echo
+	                                                               	set chh = `echo $hh1 | gawk 'BEGIN{s="abcdefghijklmnopqrstuvwx";l=length(s);for(i=1;i<=l;i++){j=i-1;c[j]=substr(s,i,1)}}{k=+$1;print c[k]}'`
+	                                                               	echo $chh
+	                                                               	echo
+	                                                               	#echo "PROV.EXIT"
+	                                                               	#exit -1
+	
+	                                                               	#set ftpdir=${bftpdir}/${hh1}
+	                                                               	set ftpdir=${bftpdir}/${hh1}
+	                                                               	echo $ftpdir
+	
+#Tentatively commented unless a useful purpose is understood:
+#	                                                               	if ( $downdate_final_rinex_from_1Hz_to_30s == "y" ) then
+#	                                                                       	set rfile = ${sta_l}${doy}${chh}.${yy}"d.Z"
+#	                                                               	else
+#	                                                                       	#set rfile = ${sta_l}${doy}${chh}.${yy}"o.gz"
+#	                                                                       	set rfile = ${sta_l}${doy}${chh}.${yy}"d.Z"
+#	                                                               	endif
+	
+	                                                               	##wget ${ftpdir}/${sta_l}${doy}"???."${yy}"d.Z"
+	                                                               	#wget --tries=$ntries ${ftpdir}/$rfile
+	                                                               	wget --tries=$ntries ${ftpdir}/${sta_l}${doy}${chh}*.${yy}"d.Z"
+	
+	                                                               	#if ( -f $rfile && ! ( -z $rfile ) ) then
+	                                                                #        ls -l $rfile >> available_files.garner.tmp
+	                                                               	#endif
+									ls -l ${sta_l}${doy}${chh}*.${yy}"d.Z"  >> available_files.australiancors.tmp
+	
+	                                                               	@ hh ++
+	
+	                                                       	end
+	
+	                                                        if ( -f available_files.australiancors.tmp && ! ( -z available_files.australiancors.tmp ) ) then
+	
+	                                                       		if ( $downdate_final_rinex_from_1Hz_to_30s == "y" ) then
+	                                                                      	foreach file1 ( ${sta_l}${doy}[a-x]*"."${yy}"d.Z" )
+	                                                                       		echo $file1
+	                                                       	                	zcat $file1 | ${bindir}/crx2rnx > $file1:r:r.${yy}o
+	                                                       	        	end
+	                                                       		else
+	                                                       	        	#foreach file1 ( ${sta_l}${doy}[a-x]"."${yy}"o.gz" )
+	                                                                       	foreach file1 ( ${sta_l}${doy}[a-x]*"."${yy}"d.Z" )
+	                                                              	    		echo $file1
+	                                                                              	#gunzip -f $file1
+	                                                      	                	zcat $file1 | ${bindir}/crx2rnx > $file1:r:r.${yy}o
+	                                                                      	end
+	                                                               	endif
+	
+	                                                       	        if ( $downdate_final_rinex_from_1Hz_to_30s == "n" ) then
+	                                              	                        ${bindir}/teqc  -phc ${sta_l}${doy}[a-x]*.${yy}o | ${bindir}/rnx2crx | compress > ${sta_l}${doy}0.${yy}d.Z
+	                               	                                else
+	                                       	                                ${bindir}/teqc  -phc -O.int 30 ${sta_l}${doy}[a-x]*.${yy}o |  ${bindir}/teqc -O.dec 30 | ${bindir}/rnx2crx | compress > ${sta_l}${doy}0.${yy}d.Z
+	                       	                                        endif
+	
+	               	                                                ls -l ${sta_l}${doy}0.${yy}d.Z
+	
+	                                                                #rm -f ${sta_l}${doy}[a-x].${yy}o ${sta_l}${doy}[a-x]"."${yy}"d.Z"
+								endif
+		
+							endif
+                       				else
+  							# FUTURE ADD-ON: geofons ICC 30-s and 1-Hz
+                                                endif
+
+                                      	endif
+
+					if ( $backup_in_localrep == "y" ) then
+						#cp -p ${sta_l}${doy}0.${yy}d.Z ${localrepdir}/rinex/${localrep_sampling}/${year}/${doy}/${infile}
+ 						if ( -f ${sta_l}${doy}0.${yy}d.Z ) then
+							cp -p ${sta_l}${doy}0.${yy}d.Z ${localrepdir1}/${infile}
+						endif
+					endif
+
+					#rm -f ${sta_l}${doy}???"."${yy}"d.Z"
+	
+
+				endif
+
+		       	endif
+		endif
+	endif
+
+	ls -l ${infile}
+#zcat ${infile} | ${bindir}/crx2rnx | compress >  $rnxfile
+#ls -l ${infile} ${rnxfile}
+#mv ${infile} $outfile
+	#cp -p ${infile} ..
+end
+endif
+
+#############################
+# Downloading navigation file
+#############################
+if( $dwhat == "eph" || $dwhat == "both" ) then
+if ( ! ( -f brdc${doy}0.${yy}n.Z || -f auto${doy}0.${yy}n.Z || -f brdc${doy}0.${yy}n || -f auto${doy}0.${yy}n ) ) then
+	rm -f ????${doy}0.${yy}n.Z
+	#wget --tries=$ntries  ftp://cddis.gsfc.nasa.gov/pub/gps/data/daily/${year}/${doy}/${yy}n/brdc${doy}0.${yy}n.Z
+	wget --auth-no-challenge "https://cddis.nasa.gov/archive/gnss/data/daily/${year}/${doy}/${yy}n/brdc${doy}0.${yy}n.Z"
+	if ( ! ( -f brdc${doy}0.${yy}n.Z ) ) then
+
+		#wget --tries=$ntries ftp://lox.ucsd.edu/pub/rinex/$year/$doy/auto${doy}0.${yy}n.Z	
+		wget --tries=$ntries http://anonymous:jason%40ucsd.edu@garner.ucsd.edu/pub/rinex/${year}/${doy}/auto${doy}0.${yy}n.Z
+
+
+		if ( ! -f auto${doy}0.${yy}n.Z ) then
+			echo "WARNING: Non available any navigation file from cddis or from lox"
+		endif
+	endif
+endif
+if ( ! ( -f brdc${doy}0.${yy}n.Z || -f auto${doy}0.${yy}n.Z || -f brdc${doy}0.${yy}n || -f auto${doy}0.${yy}n ) ) then
+	rm -f ????${doy}0.${yy}n.Z
+	wget --auth-no-challenge "https://cddis.nasa.gov/archive/gnss/data/daily/${year}/${doy}/${yy}n/brdc${doy}0.${yy}n.Z"
+
+	if ( ! ( -f brdc${doy}0.${yy}n.Z ) ) then
+##########not sure if need modification
+		#wget --tries=$ntries ftp://lox.ucsd.edu/pub/rinex/$year/$doy/auto${doy}0.${yy}n.Z	
+		wget --tries=$ntries http://anonymous:jason%40ucsd.edu@garner.ucsd.edu/pub/rinex/${year}/${doy}/auto${doy}0.${yy}n.Z
+
+
+		if ( ! -f auto${doy}0.${yy}n.Z ) then
+			echo "WARNING: Non available any navigation file from cddis or from lox"
+		endif
+	endif
+endif
+ls -l *${doy}0.${yy}n*
+endif
+
+#############################
+# Downloading IONEX file
+#############################
+if( $dwhat == "ionex" ) then
+
+foreach iaac ( $* )
+
+	set ionexf = ${iaac}${doy}"0."${yy}"i.Z"
+	echo $iaac  $ionexf
+
+   	set has_ionexf_been_looked_for_at_cddis_the_last = 0
+
+	if (!(-f ${ionexf})) then
+		if( ${order_to_look_in_localrep_dir} == "first" ) then
+            if ( -f ${localrepdir1}/${ionexf} ) then
+				echo " "
+                echo " Gathering "$ionexf" from local repository at "${localrepdir1}
+                cp -p ${localrepdir1}/${ionexf} .
+                echo " "
+            else
+                echo " "
+                echo "IONEX file "$ionexf" not found at local repository in "${localrepdir1}
+		wget --auth-no-challenge "https://cddis.nasa.gov/archive/gnss/products/ionosphere/${year}/${doy}/${ionexf}"
+		#[MHP, 202103_08]: Next three lines commented to avoid the IONEX file download halting from cddis, under unsupported ftp protocol since second half of 2020.
+		#				if (!(-f ${ionexf})) then
+			#                			wget --tries=$ntries  ftp://cddis.gsfc.nasa.gov/gps/products/ionex/${year}/${doy}/${ionexf}
+			#				endif
+				#if ( $? != 0 ) then
+				if (!(-f ${ionexf})) then
+					echo "WARNING. Not found at CDDIS"
+					if ( $iaac == "uqrg" ) then
+						set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+						set month = `echo $year $doy | ${bindir2}/doy2cal | gawk '{printf "%02d",$2}'`
+						set day_mon = `echo $year $doy | ${bindir2}/doy2cal | gawk '{printf "%02d",$3}'`
+						echo wget http://cabrera.upc.es/upc_ionex_GPSonly-RINEXv3/${year}/${doyf}_${yy}${month}${day_mon}.15min/${ionexf}
+                                                wget http://cabrera.upc.es/upc_ionex_GPSonly-RINEXv3/${year}/${doyf}_${yy}${month}${day_mon}.15min/${ionexf}
+                                                if (!(-f ${ionexf})) then
+
+						echo wget ftp://newg1.upc.es/upc_ionex/${year}/${doy}"_??????.15min/"${ionexf}
+						rm index.html
+						wget -L ftp://newg1.upc.es/upc_ionex/${year}/
+						set ftpdir = `grep ${doyf}"_" index.html | gawk -F\" '{print $2}'`
+						wget ${ftpdir}${ionexf}
+						endif
+						if (!(-f ${ionexf})) then
+							echo "ERROR: Not found UQRG GIM "${ionexf}" in CDDIS and it is not found in UPC-IonSAT server (newg1.upc.es) where it is being computed."
+							exit -1
+						endif
+					endif
+					set short_iaac = `echo $iaac | cut -c -3`
+					if ( ${short_iaac} == "whu" ) then
+						set year_today = `date +%Y`
+						if ( $year == $year_today ) then                        
+							if ( $? != 0 ) then
+								echo "ERROR. Failed to download ionex file for Whuan for current year"
+							else
+        			            compress -f $ionexf:r
+		                    endif
+						else
+							if ( $? != 0 ) then
+								echo "ERROR. Failed to download ionex file for Whuan from archive"
+							endif
+				        endif			
+					else if ( ${short_iaac} == "aoe" ) then
+						#wget ftp://123.57.20.171/product/rtion/${year}inx/${ionexf}
+						if ( $? != 0 ) then
+							echo "ERROR. Failed to download ionex file for AOE"
+						endif
+#					else if ( ${iaac} == "casg" ) then
+					else if ( ${short_iaac} != "uqr" ) then
+						#wget ftp://123.57.20.171/product/ionex/${year}/${doy}/$ionexf
+						if ( $? != 0 ) then
+							echo "ERROR. Failed to download ionex file for CAS"
+						endif
+#					else
+#						echo "ERROR. Failed to download ionex file "$ionexf
+#						exit -1
+					endif
+				endif
+                set has_ionexf_been_looked_for_at_cddis_the_last = 1
+            endif
+        else
+            echo " "
+            echo " Trying to gather IONEX file from cddis first..."
+		wget --auth-no-challenge "https://cddis.nasa.gov/archive/gnss/products/ionosphere/${year}/${doy}/${ionexf}"
+		if (!(-f ${ionexf})) then
+			#wget --tries=$ntries  ftp://cddis.gsfc.nasa.gov/gps/products/ionex/${year}/${doy}/${ionexf}
+			endif
+			#if ( $? != 0 ) then
+			if (!(-f ${ionexf})) then
+				echo "WARNING. Not found at CDDIS"
+				if ( $iaac == "uqrg" ) then
+					set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+					set month = `echo $year $doy | ${bindir2}/doy2cal | gawk '{printf "%02d",$2}'`
+					set day_mon = `echo $year $doy | ${bindir2}/doy2cal | gawk '{printf "%02d",$3}'`
+					echo wget http://cabrera.upc.es/upc_ionex_GPSonly-RINEXv3/${year}/${doyf}_${yy}${month}${day_mon}.15min/${ionexf}
+                                        wget http://cabrera.upc.es/upc_ionex_GPSonly-RINEXv3/${year}/${doyf}_${yy}${month}${day_mon}.15min/${ionexf}
+                                        if (!(-f ${ionexf})) then
+
+					echo wget ftp://newg1.upc.es/upc_ionex/${year}/${doy}"_??????.15min/"${ionexf}
+					rm index.html
+					wget -L ftp://newg1.upc.es/upc_ionex/${year}/
+					set ftpdir = `grep ${doyf}"_" index.html | gawk -F\" '{print $2}'`
+					wget ${ftpdir}${ionexf}
+					endif
+					if (!(-f ${ionexf})) then
+						echo "ERROR: Not found UQRG GIM "${ionexf}" in CDDIS and it is not found in UPC-IonSAT server (newg1.upc.es) where it is being computed."
+						exit -1
+					endif
+				endif
+				set short_iaac = `echo $iaac | cut -c -3`
+				if ( ${short_iaac} == "whu" ) then
+					set year_today = `date +%Y`
+					if ( $year == $year_today ) then                        
+						if ( $? != 0 ) then
+							echo "ERROR. Failed to download ionex file for Whuan for current year"
+						else
+	        	            compress -f $ionexf:r
+				        endif
+					#else
+					else if ( ${short_iaac} != "uqr" ) then
+				   		if ( $? != 0 ) then
+							echo "ERROR. Failed to download ionex file for Whuan from archive"
+						endif
+					endif
+#				else if ( ${iaac} == "casg" ) then
+				#else
+				else if ( ${short_iaac} != "uqr" ) then
+					#wget ftp://123.57.20.171/product/ionex/${year}/${doy}/$ionexf
+					if ( $? != 0 ) then
+						echo "ERROR. Failed to download ionex file for CAS"
+					endif
+#				else
+#					echo "ERROR. Failed to download ionex file "$ionexf
+#					exit -1
+				endif
+			endif
+            if ( !(-f ${ionexf}) ) then
+             	echo " "
+                echo "IONEX file "$ionexf" not found at cddis"
+                echo " Trying at local repository in "${localrepdir1}
+                echo
+                if ( -f ${localrepdir1}/${ionexf} ) then
+                 	cp -p ${localrepdir1}/${ionexf} .
+                endif
+            else
+                set has_ionexf_been_looked_for_at_cddis_the_last = 1
+            endif
+        endif
+        if (!(-f ${ionexf})) then
+            echo "WARNING: Non available IONEX file "$ionexf
+        else
+            ls -l ${ionexf}
+            if ( $backup_in_localrep == "y" && $has_ionexf_been_looked_for_at_cddis_the_last ) then
+                cp -p ${ionexf} ${localrepdir1}
+            endif
+        endif
+    endif
+end
+
+endif

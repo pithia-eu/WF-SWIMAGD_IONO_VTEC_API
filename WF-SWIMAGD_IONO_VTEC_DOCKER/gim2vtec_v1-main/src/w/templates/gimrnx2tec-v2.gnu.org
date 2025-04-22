@@ -1,0 +1,122 @@
+#set term png size 2560,1920 font arial 66
+set term png size 1280,960 font arial 33
+set output "TIC4FULL_FILE.STEC_vs_time.png"
+set term png
+set grid
+set pointsize 0.5
+set xrange [0:24]
+set title "Receiver REC @ (LON,ELAT)º, EHM m & VTEC AGENCY1 (day DOY, YEAR)"
+set xlabel "GPS time / hours of day DOY of year YEAR"
+set ylabel "STEC / TECUs"
+#plot "< zcat TIC4FULL_FILE.gz" u 3:54 lt 2 t "source: GIM AGENCY1 only","< zcat TIC4FULL_FILE.gz" u 3:55 lt 1 t "source: REC GPS meas. cal. w GIM AGENCY1"
+plot "< zcat TIC4FULL_FILE.gz" u 3:58 lt 3 t "source: REC GPS PI meas. cal w GIM AGENCY1","< zcat TIC4FULL_FILE.gz" u 3:54 lt 2 t "source: GIM AGENCY1 only","< zcat TIC4FULL_FILE.gz" u 3:60 lt 4 t "source: REC GPS IG1 meas. cal w GIM AGENCY1","< zcat TIC4FULL_FILE.gz" u 3:62 lt 5 t "source: REC GPS IG2 meas. cal w GIM AGENCY1","< zcat TIC4FULL_FILE.gz" u 3:55 lt 1 t "source: REC GPS meas. cal. w GIM AGENCY1"
+
+set output "TIC4FULL_FILE.STEC_vs_ele.png"
+set xrange [0:90]
+set xlabel "Elevation above the horizon / deg"
+#plot "< zcat TIC4FULL_FILE.gz" u 6:54 lt 2 t "source: GIM AGENCY1 only","< zcat TIC4FULL_FILE.gz" u 6:55 lt 1 t "source: REC GPS meas. cal. w GIM AGENCY1"
+plot "< zcat TIC4FULL_FILE.gz" u 6:58 lt 3 t "source: REC GPS PI meas. cal w GIM AGENCY1","< zcat TIC4FULL_FILE.gz" u 6:54 lt 2 t "source: GIM AGENCY1 only","< zcat TIC4FULL_FILE.gz" u 6:60 lt 4 t "source: REC GPS IG1 meas. cal w GIM AGENCY1","< zcat TIC4FULL_FILE.gz" u 6:62 lt 5 t "source: REC GPS IG2 meas. cal w GIM AGENCY1","< zcat TIC4FULL_FILE.gz" u 6:55 lt 1 t "source: REC GPS meas. cal. w GIM AGENCY1"
+
+set xlabel "STEC[LIcal_AGENCY1]/ TECUs"
+set auto x
+set auto y
+set grid
+
+set output "TIC4FULL_FILE.STEC-GIM_vs_STEC-LIcal.png"
+set ylabel "STEC[GIM_AGENCY1] / TECUs"
+plot x lt 3 t "","< zcat TIC4FULL_FILE.gz" u 55:54 lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-PIcal_vs_STEC-LIcal.png"
+set ylabel "STEC[PIcal_AGENCY1] / TECUs"
+plot x lt 3 t "","< zcat TIC4FULL_FILE.gz" u 55:58 lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG1cal_vs_STEC-LIcal.png"
+set ylabel "STEC[IG1cal_AGENCY1] / TECUs"
+plot x lt 3 t "","< zcat TIC4FULL_FILE.gz" u 55:60 lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG2cal_vs_STEC-LIcal.png"
+set ylabel "STEC[IG2cal_AGENCY1] / TECUs"
+plot x lt 3 t "","< zcat TIC4FULL_FILE.gz" u 55:62 lt 1 t ""
+
+set xrange [0:90]
+set xlabel "Elevation above the horizon / deg"
+
+set output "TIC4FULL_FILE.STEC-GIM-STEC-LIcal_vs_ele.png"
+set ylabel "STEC[GIM_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 6:($54-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-PIcal-STEC-LIcal_vs_ele.png"
+set ylabel "STEC[PIcal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 6:($58-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG1cal-STEC-LIcal_vs_ele.png"
+set ylabel "STEC[IG1cal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 6:($60-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG2cal-STEC-LIcal_vs_ele.png"
+set ylabel "STEC[IG2cal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 6:($62-$55) lt 1 t ""
+
+set yrange [-15:15]
+set xrange [5:90]
+set output "TIC4FULL_FILE.STEC-GIM-STEC-LIcal_vs_ele.dSTEC_-15_15.png"
+set ylabel "STEC[GIM_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 6:($54-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-PIcal-STEC-LIcal_vs_ele.dSTEC_-15_15png"
+set ylabel "STEC[PIcal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 6:($58-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG1cal-STEC-LIcal_vs_ele.dSTEC_-15_15.png"
+set ylabel "STEC[IG1cal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 6:($60-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG2cal-STEC-LIcal_vs_ele.dSTEC_-15_15.png"
+set ylabel "STEC[IG2cal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 6:($62-$55) lt 1 t ""
+
+set auto y
+set xrange [0:24]
+set xlabel "GPS time / hours of day DOY of year YEAR"
+
+set output "TIC4FULL_FILE.STEC-GIM-STEC-LIcal_vs_time.png"
+set ylabel "STEC[GIM_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 3:($54-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-PIcal-STEC-LIcal_vs_time.png"
+set ylabel "STEC[PIcal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 3:($58-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG1cal-STEC-LIcal_vs_time.png"
+set ylabel "STEC[IG1cal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 3:($60-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG2cal-STEC-LIcal_vs_time.png"
+set ylabel "STEC[IG2cal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 3:($62-$55) lt 1 t ""
+
+set yrange [-15:15]
+set output "TIC4FULL_FILE.STEC-GIM-STEC-LIcal_vs_time.dSTEC_-15_15.png"
+set ylabel "STEC[GIM_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 3:($54-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-PIcal-STEC-LIcal_vs_time.dSTEC_-15_15.png"
+set ylabel "STEC[PIcal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 3:($58-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG1cal-STEC-LIcal_vs_time.dSTEC_-15_15.png"
+set ylabel "STEC[IG1cal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 3:($60-$55) lt 1 t ""
+
+set output "TIC4FULL_FILE.STEC-IG2cal-STEC-LIcal_vs_time.dSTEC_-15_15.png"
+set ylabel "STEC[IG2cal_AGENCY1]-STEC[LIcal_AGENCY1] / TECUs"
+plot "< zcat TIC4FULL_FILE.gz" u 3:($62-$55) lt 1 t ""
+set auto y
+
+
+#set output "TIC4FULL_FILE.d2Li_vs_time.png"
+#set xlabel "GPS time / hours of day DOY of year YEAR"
+#set ylabel "d2LI(t)=LI(t)-2LI(t-30s)+LI(t-120s) / m"
+#set xrange [0:24]
+#set yrange [-.1:.1]
+#plot "< zcat TIC4FULL_FILE.gz" u 3:21 lt 2 t "source: REC GPS meas."

@@ -1,0 +1,8 @@
+#!/bin/csh -f
+cd ~
+#rm    upc_ionsat_tools.v4_release.tgz
+#tar cvfz upc_ionsat_tools.v4_release.tgz ./bin ./dat ./datasets ./opt ./templates ./usr ./w ./wrt ./run.test.IonSAT-lab_sessions.v4b.scr ./install_as_sudoer.scr ./create_package_for_upc_ionsat_tools.v4_release.scr
+#ls -l upc_ionsat_tools.v4_release.tgz 
+rm    upc_ionsat_tools.v5_release.tgz
+tar cvfz upc_ionsat_tools.v5_release.tgz .netrc ./bin ./dat ./datasets ./opt ./templates ./usr ./w ./wrt ./run.test.IonSAT-lab_sessions.v5.scr ./install_as_sudoer.v5.scr ./create_package_for_upc_ionsat_tools.v5_release.scr
+ls -l upc_ionsat_tools.v5_release.tgz 

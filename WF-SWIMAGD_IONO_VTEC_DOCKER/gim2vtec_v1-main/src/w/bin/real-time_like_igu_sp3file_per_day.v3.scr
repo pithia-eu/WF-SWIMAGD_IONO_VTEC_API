@@ -1,0 +1,66 @@
+#!/bin/csh -f
+#
+#201412_02[MHP]: Main diff. of v3 regarding to v2 is trying to fix the problems with igu in NRT conditions, during the change of day.
+#
+if($# != 7)then
+	echo "Usage "$0" gpsweek(e.g. 1285) day_of_week(e.g. 2) yy(e.g. 04) mm(e.g. 08) dd(e.g. 24) sp3bdir(e.g. ftp://cddis.gsfc.nasa.gov/gps/products/) bindir(e.g. ~/w/bin)"
+	exit -2
+endif
+
+set gpsweek=`echo $1 | gawk '{printf "%04d",$1}'`
+set dow=$2
+set yy=$3
+set mm=$4
+set dd=$5
+set sp3bdir=$6
+set bindir=$7
+
+echo " "
+echo " gpsweek= "$gpsweek
+echo " dow= "$dow
+echo " yy= "$yy
+echo " mm= "$mm
+echo " dd= "$dd
+echo " sp3bdir= "$sp3bdir
+echo " bindir= "$bindir
+echo " "
+
+set sp3bfile=igu$gpsweek$dow
+
+#set sp3file0=${sp3bdir}/${gpsweek}/${sp3bfile}"_"
+set sp3dir=${sp3bdir}/${gpsweek}
+
+set hhlst="00 06 12 18"
+
+rm -f sp3c.lst.0.?? sp3c.lst.0
+
+foreach hh ($hhlst)
+	echo $hh
+	set sp3file=${sp3bfile}"_"$hh.sp3.Z
+#	echo $sp3file0$hh.sp3.Z
+	echo $sp3file
+	if ( ! ( -f $sp3file ) ) then
+#		wget $sp3file0$hh.sp3.Z
+		wget ${sp3dir}/${sp3file}
+		if ( ! ( -f ${sp3file} ) ) then
+			#echo "ERROR: Non existing/gathered file "${sp3file}
+			#exit -2
+			echo "WARNING: Non existing/gathered file "${sp3file}
+			echo "(moving forward and trying the next period...)"
+			goto next
+		endif
+	else
+		echo "Warning: using existing file "$sp3file
+	endif
+	zcat ${sp3file} | gawk -f ${bindir}/sp3c_to_rnxephlst.v4.awk > sp3c.lst.0.$hh
+	ls -l sp3c.lst.0.$hh
+	next:
+end
+
+#cat sp3c.lst.0.?? | gawk 'BEGIN{yy0=+"'$yy'";mm0=+"'$mm'";dd0=+"'$dd'"}{prn=+$2;yy=+$3;mm=+$4;dd=+$5;hh=+$6;min=+$7;ss=+$8;ii=prn" "yy" "mm" "dd" "hh" "min" "ss;k[ii]++;if(yy==yy0 && mm==mm0 && dd==dd0 && k[ii]==1)print $0}' > sp3c.lst.0
+cat sp3c.lst.0.?? | gawk 'BEGIN{yy0=+"'$yy'";mm0=+"'$mm'";dd0=+"'$dd'"}{prn=+$2;yy=+$3;mm=+$4;dd=+$5;hh=+$6;min=+$7;ss=+$8;ii=prn" "yy" "mm" "dd" "hh" "min" "ss;k[ii]++;print $0}' > sp3c.lst.0
+
+ls -l sp3c.lst.0
+
+sort -n -k +3 -n -k +4 -n -k +5 -n -k +6 -n -k +7 -n -k +8 sp3c.lst.0 | uniq > sp3c.lst
+ls -l sp3c.lst

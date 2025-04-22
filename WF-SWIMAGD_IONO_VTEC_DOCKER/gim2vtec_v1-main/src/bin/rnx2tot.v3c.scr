@@ -1,0 +1,16 @@
+#!/bin/csh -f
+
+set bindir=~/bin
+rm -f temp.tot
+foreach file (*o.Z *d.Z)
+	#set rec=`echo $file | gawk '{l=length($1);print substr($1,l-13,4)}'`
+	set rec=`echo $file | gawk '{l=length($1);print substr($1,1,4)}'`
+	echo $file $rec
+	#zgrep "APPROX POSITION XYZ" $file | gawk '{print "'$rec'",$1,$2,$3}' | gawk -f ${bindir}/sxyz2sadr.awk >> temp.tot
+	#set pos=`zcat $file | head -300 | grep "APPROX POSITION XYZ" | gawk '{print "'$rec'",$1,$2,$3}' | gawk -f ${bindir}/sxyz2sadr.awk`
+	set pos=`zcat $file | head -300 | gawk '{str=substr($0,61,19);if(str=="APPROX POSITION XYZ")print "'$rec'",$1,$2,$3}' | gawk -f ${bindir}/sxyz2sadr.awk`
+	echo $pos
+	echo $pos >> temp.tot
+	#zgrep "APPROX POSITION XYZ" $file | gawk '{print "'$rec'",$1,$2,$3}' | gawk -f ${bindir}/sxyz2sadr.awk 
+end
+ls -l temp.tot

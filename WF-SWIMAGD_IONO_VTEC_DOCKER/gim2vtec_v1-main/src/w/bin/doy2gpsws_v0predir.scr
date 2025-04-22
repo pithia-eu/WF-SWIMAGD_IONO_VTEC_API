@@ -1,0 +1,11 @@
+#!/bin/csh -f
+if($# != 3)then
+	echo "Usage: "$0" year doy  predir (e.g. ~)"
+	exit -2
+endif
+set year=$1
+set doy=$2
+set predir=$3
+##/goa/bin/doy2sec $year $doy | /goa/bin/Linux86/sec2gpsws -
+#~/wartk3.2/bin/doy2sec $year $doy | ~/wartk3.2/bin/sec2gpsws -
+${predir}/w/bin/doy2sec_v0predir $year $doy $predir | ${predir}/w/bin/sec2gpsws -

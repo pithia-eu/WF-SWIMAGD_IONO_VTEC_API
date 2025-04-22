@@ -1,0 +1,111 @@
+#!/bin/csh -f
+if ( $# != 1 && $# != 2 ) then
+	echo "Usage: "$0"  rinex_or_hatananaka_compressed_or_uncompressed_file (e.g. mame1570.17d.Z)  [alternative_xyz_filename (e.g. very_raw_from_GPS_satellites_in_view.xyz)]"
+	exit -1
+endif
+set rinexfile = $1
+
+if ( $# == 2 ) then
+	set alternative_xyz_filename = $2
+endif
+
+set bindir = ~/bin
+set bindir1 = ~/w/bin
+set gps_sp3dir = ftp://cddis.gsfc.nasa.gov/gps/products
+
+set ext = $rinexfile:e
+echo $ext
+
+if ( $ext == "Z" || $ext == "gz" ) then
+	set rinexfile0 = $rinexfile:r.tmp
+	zcat $rinexfile > $rinexfile0
+else
+	set rinexfile0 = $rinexfile.tmp
+	cat $rinexfile > $rinexfile0
+endif
+
+set ext2 = $rinexfile0:r:e
+echo $ext2
+
+if ( `echo $ext2 | gawk '{print length($1)}'` == 3 ) then
+
+	set yy = `echo $ext2 | gawk '{print substr($1,1,2)}'`
+	echo 
+	echo "yy = "$yy
+	echo
+	set year = `echo $yy | gawk '{if($1>=80){print 1900+$1}else{print 2000+$1}}'`
+	echo "year = "$year
+
+		set rec = `echo $rinexfile0 | gawk -F"/" '{print substr($NF,1,4)}'`
+		echo "rec = "$rec
+		set doyf = `echo $rinexfile0 | gawk -F"/" '{print substr($NF,5,3)}'`
+		set doy = `echo $doyf | gawk '{print $1*1}'`
+		echo "doyf,doy = "$doyf" "$doy
+
+		set kind = `echo $ext2 | gawk '{print substr($1,3,1)}'`
+		if ( $kind == "d" ) then
+			echo 
+			echo "Recognized Hatanaka format"
+			set ext2b = $yy"o"
+			set rinexfile1 = $rinexfile0:r:r.$ext2b
+			cat $rinexfile0 | ${bindir}/crx2rnx > $rinexfile1
+		else
+			if ( $kind == "o" ) then
+				echo
+				echo "Recognized RINEX format"
+				set rinexfile1 = $rinexfile:r
+				cat $rinexfile0 > $rinexfile1
+			else
+				echo
+				echo "ERROR: Non-recognized RINEX or Hatanaka formats (kind = "$kind" )"
+				exit -1
+			endif
+		endif
+
+	else
+
+		echo "ERROR: Non-recognized RINEX or Hatanaka formats (ext2 = "$ext2" )"
+	end
+
+else
+
+endif
+
+ls -l $rinexfile1
+wc -l $rinexfile1
+grep ^" "$yy $rinexfile1 > first-lines_of_rinex-epoch-headers.tmp
+wc -l first-lines_of_rinex-epoch-headers.tmp 
+
+#gawk '{n=length(substr($0,33))/3;print $0;time_tag=substr($0,1,26);print time_tag;print substr($0,33),n;for(i=1;i<=n;i++){print substr($0,34+(i-1)*3,2)}}' first-lines_of_rinex-epoch-headers.tmp | more
+gawk '{n=length(substr($0,33))/3;time_tag=substr($0,1,26);printf "%s",time_tag;for(i=1;i<=n;i++){const=substr($0,33+(i-1)*3,1);if(const=="G" || const==" ")printf " %2d",substr($0,34+(i-1)*3,2)};printf "\n"}' first-lines_of_rinex-epoch-headers.tmp > epochs_and_first_header_line_gps_satellites.tmp
+wc -l epochs_and_first_header_line_gps_satellites.tmp
+
+set month = `echo $year $doy | ${bindir1}/doy2cal | gawk '{print $2}'`
+set day = `echo $year $doy | ${bindir1}/doy2cal | gawk '{print $3}'`
+echo $month $day
+#set gpsweek = `${bindir1}/doy2gpsws_v0predir.scr $year $doy ~ionex4 | gawk '{printf "%04d",$1}'`
+#set gpssec = `${bindir1}/doy2gpsws_v0predir.scr $year $doy ~ionex4 | gawk '{print $2}'`
+set gpsweek = `${bindir1}/doy2gpsws_v0predir.scr $year $doy ~ | gawk '{printf "%04d",$1}'`
+set gpssec = `${bindir1}/doy2gpsws_v0predir.scr $year $doy ~ | gawk '{print $2}'`
+echo $gpsweek $gpssec
+set gpsday = `echo $gpsweek $gpssec | gawk '{print int($1*7+($2+.5)/86400)}'`
+echo $gpsday
+set dow = `echo $gpsday | gawk '{print $1%7}'`
+echo $dow
+
+${bindir1}/real-time_like_igu_sp3file_per_day.v3.scr $gpsweek $dow $yy $month $day $gps_sp3dir $bindir1
+
+if ( -f sp3c.lst ) then
+	paste -s sp3c.lst > sp3c.lst.s
+	#gawk 'BEGIN{re=6371;getline < "sp3c.lst.s";n=NF/14;for(i=1;i<=n;i++){i1=14*(i-1)+1;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;i7=i6+1;i8=i7+1;i9=i8+1;i10=i9+1;i11=i10+1;i12=i11+1;prn=+$i2;yy=+$i3;mo=+$i4;da=+$i5;ho=+$i6;mi=+$i7;se=+int($i8+.5);ii=prn" "yy" "mo" "da" "ho" "mi" "se;x[ii]=$i9;y[ii]=$i10;z[ii]=$i11;dt[ii]=$i12}}{yy=+$1;mo=+$2;da=+$3;ho=+$4;mi=+$5;se=+int($6+.5);n=NF-6;for(i=1;i<=n;i++){prn=+$(i+6);ii=prn" "yy" "mo" "da" "ho" "mi" "se;if(length(x[ii])ffj!=0){r=sqrt(x[ii]**2+y[ii]**2+z[ii]**2);f=re/r;x0=x[ii]*f;y0=y[ii]*f;z0=z[ii]*f;m=split(ii,a);print m;printf "%2d %2d %2d %2d %2d %2d %4.1f %14.6f %14.6f %14.6f %14.6f %14.6f %14.6f\n",a[1],a[2],a[3],a[4],a[5],a[6],a[7],x[ii],y[ii],z[ii],x0,y0,z0}}}' epochs_and_first_header_line_gps_satellites.tmp > xyz0_very_raw_from_GPS_satellites_in_view.txt
+
+	if ( $# == 2 ) then
+		set output_xyzfilename = $alternative_xyz_filename
+	else
+		set output_xyzfilename = $rinexfile1.very_raw_from_GPS_satellites_in_view.xyz
+	endif
+
+	gawk 'BEGIN{rec="'$rec'";re=6371;getline < "sp3c.lst.s";n=NF/14;for(i=1;i<=n;i++){i1=14*(i-1)+1;i2=i1+1;i3=i2+1;i4=i3+1;i5=i4+1;i6=i5+1;i7=i6+1;i8=i7+1;i9=i8+1;i10=i9+1;i11=i10+1;i12=i11+1;prn=+$i2;yy=+$i3;mo=+$i4;da=+$i5;ho=+$i6;mi=+$i7;se=+int($i8+.5);ii=prn" "yy" "mo" "da" "ho" "mi" "se;x[ii]=$i9;y[ii]=$i10;z[ii]=$i11;dt[ii]=$i12}}{yy=+$1;mo=+$2;da=+$3;ho=+$4;mi=+$5;se=+int($6+.5);n=NF-6;xm=0;ym=0;zm=0;k=0;for(i=1;i<=n;i++){prn=+$(i+6);ii=prn" "yy" "mo" "da" "ho" "mi" "se;if(length(x[ii])!=0){k++;xm=xm*(k-1)/k+x[ii]/k;ym=ym*(k-1)/k+y[ii]/k;zm=zm*(k-1)/k+z[ii]/k}};if(k>=4){r=sqrt(xm**2+ym**2+zm**2);f=1000*re/r;x0=xm*f;y0=ym*f;z0=zm*f;sx=2999.99;sy=sx;sz=sx;dx=0;dy=0;dz=0;printf "XYZ  0 %02d %2d %2d %2d %2d %4.1f %s %14.4f%14.4f%14.4f%14.4f%14.4f%14.4f%14.4f%14.4f%14.4f\n",yy,mo,da,ho,mi,se,rec,x0,y0,z0,sx,sy,sz,dx,dy,dz}}' epochs_and_first_header_line_gps_satellites.tmp > $output_xyzfilename
+	wc -l $output_xyzfilename
+	${bindir1}/xyz_to_tot_and_eli.v2.scr $output_xyzfilename
+endif

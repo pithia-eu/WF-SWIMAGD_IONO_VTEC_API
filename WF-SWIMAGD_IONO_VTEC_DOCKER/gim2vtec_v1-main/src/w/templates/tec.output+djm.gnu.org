@@ -1,0 +1,9 @@
+#set yrange [0:VTECMAX4PLOT]
+set yrange [VTECMIN4PLOT:VTECMAX4PLOT]
+set term png size 2560,1920 font arial 44
+set output "VFILE0.REC.png"
+set grid
+set xlabel "GPS time / Modified Julian Days"
+set title "Year/Month/Day/DOY: YEAR0/MONTH0F/DAY0F/DOY0F-YEAR1/MONTH1F/DAY1F/DOY1F"
+set ylabel "Vertical Total Electron Content (VTEC) / TECUs"
+plot "< cat VFILE0.REC | gawk '{tdjm=$16;vtec_tecu=(10/1.05)*$11;print tdjm,vtec_tecu}'" w lp t "REC [ Lon. = LONº , Sph.Lat. = LATº ]"

@@ -1,0 +1,262 @@
+#!/bin/csh -f
+set sname = `echo $0 | gawk -F"/" '{print $NF}'`
+if($# == 0)then
+	echo "Usage: "$sname" year0 (e.g. 2017)  month0 (e.g. 6)  day_of_month0 (e.g. 12)  year1 (e.g. 2017)  month1 (e.g. 6)  day_of_month1 (e.g. 14)  GIM_IONEX_ID (e.g. uqrg)  rinex_sampling_time_in_seconds (e.g. 30)  rinex_to_be_gathered_locally (n, or the absolute address of the local data subdirectory just ONE level below the working directory, e.g. GNSS_RINEXv2_zipped_hatanaka_files)  runID (e.g. Tractor_exp)  generate_plots (y/n)  view_overall_plot_STECvsTIME  (y/n)  run_level (STEC_computation, STEC_extraction, overall_STECvsTIME)  receiverID_1 (e.g. borj) ... receiverID_N (e.g. ijmu)"
+	exit -1
+endif
+
+#################################
+#
+#setenv masteruser  ionex4
+#setenv masteruser  ionsat-tools-master
+setenv masteruser  
+
+#set view = y
+set view = n
+#
+set totfile = ~${masteruser}/dat/sta_pos.tot
+#
+set pwd0 = $PWD
+#
+set bindir = ~${masteruser}/bin
+#
+set bindir1 = ~${masteruser}/w/bin
+#
+set templatesdir = ~${masteruser}/w/templates
+#
+#set plot_template = stecs_vs_tdjm.gnu.org
+set plot_template = stecs_vs_tdjm.v2.gnu.org
+#
+set elemin4align = 30.
+set konmin4gim_stec = 50
+set stdev_bi_max4gimcal_tecu = 3.d0
+#
+#set elemin4vtecplot = 45
+#set elemin4vtecplot = 30
+set elemin4vtecplot = 0
+#
+#################################
+
+set year0 = $1
+set month0 = $2
+set month0f = `echo $month0 | gawk '{printf "%02d",$1}'`
+set day0 = $3
+set day0f = `echo $day0 | gawk '{printf "%02d",$1}'`
+
+set doy0 = `echo $year0 $month0 $day0 | ${bindir}/cal2doy2b`
+set doy0f = `echo $doy0 | gawk '{printf "%03d",$1}'`
+set djm0 = `echo $year0 $month0 $day0 | ${bindir}/cal2djm | gawk '{printf "%5d",$1}'`
+echo $year0 $month0 $day0 $doy0 $djm0 $doy0f $month0f $day0f
+
+
+set year1 = $4
+set month1 = $5
+set month1f = `echo $month1 | gawk '{printf "%02d",$1}'`
+set day1 = $6
+set day1f = `echo $day1 | gawk '{printf "%02d",$1}'`
+
+set doy1 = `echo $year1 $month1 $day1 | ${bindir}/cal2doy2b`
+set doy1f = `echo $doy1 | gawk '{printf "%03d",$1}'`
+set djm1 = `echo $year1 $month1 $day1 | ${bindir}/cal2djm | gawk '{printf "%5d",$1}'`
+echo $year1 $month1 $day1 $doy1 $djm1 $doy1f $month1f $day1f
+
+set iaac = $7
+set rinex_sampling_time_in_seconds = $8
+set rinex_to_be_gathered_locally = $9
+set runID = $10
+set generate_plots = $11
+set view_overall_plot_STECvsTIME = $12
+set run_level = $13
+
+#set pwd1 = ${pwd0}/$runID/VTECvsTIME_from_GIM.${iaac}.${idtsec_GIM_VTEC}
+set pwd1 = ${pwd0}/$runID/STECs_from_L1-L2_calibrated_with_GIM.${iaac}
+
+mkdir -p $pwd1
+cd $pwd1
+
+set sfile0 = ${pwd1}/yy_doy_th_rec_prn_ele_tdjm_stec_stdev.${iaac}.${year0}${month0f}${day0f}_${doy0f}_to_${year1}${month1f}${day1f}_${doy1f}
+set spfile0 = STECs-vs-TIME.${iaac}.${year0}${month0f}${day0f}-${doy0f}-to-${year1}${month1f}${day1f}-${doy1f}
+set vpfile0 = VTECs-vs-TIME.${iaac}.${year0}${month0f}${day0f}-${doy0f}-to-${year1}${month1f}${day1f}-${doy1f}
+set d2v300sfile0 = d2VTEC300s-vs-TIME.${year0}${month0f}${day0f}-${doy0f}-to-${year1}${month1f}${day1f}-${doy1f}
+set d2lifile0 = d2LI-vs-TIME.${year0}${month0f}${day0f}-${doy0f}-to-${year1}${month1f}${day1f}-${doy1f}
+set dBwifile0 = dBw-vs-TIME.${year0}${month0f}${day0f}-${doy0f}-to-${year1}${month1f}${day1f}-${doy1f}
+
+echo
+echo $year0 $doy0 $year1 $doy1
+echo
+echo $iaac $rinex_sampling_time_in_seconds $runID
+echo
+echo $generate_plots $view_overall_plot_STECvsTIME
+echo
+echo $run_level
+echo
+echo $pwd1
+echo
+
+set ks = 1
+#while ( $ks <= 12 )
+while ( $ks <= 13 )
+	shift
+	@ ks ++
+end
+
+set reclst = ""
+foreach rec ( $* )
+	set reclst = ( $reclst $rec )
+end
+echo 
+echo "reclst = "$reclst
+
+#echo "PROV.EXIT"
+#exit -1
+
+echo
+echo "Starting on  = "$run_level
+goto $run_level
+
+
+STEC_computation:
+echo
+echo "======================"
+echo " STEC computation"
+echo "======================"
+set djm = $djm0
+while ( $djm <= $djm1 )
+	echo $djm $djm1
+	set year_month_day = `echo $djm | ${bindir}/djm2cal1`
+	set year = $year_month_day[1]
+	set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+	set month = $year_month_day[2]
+	set monthf = `echo $month | gawk '{printf "%02d",$1}'`
+	set day = $year_month_day[3]
+	set dayf = `echo $day | gawk '{printf "%02d",$1}'`
+	set doy = `echo $year $month $day | ${bindir}/cal2doy2b`
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	echo $djm $year $month $day $doy $yy
+	echo $monthf $dayf $doyf 
+
+	#echo ${bindir1}/gimrnx2stec-one-day.v2.scr $year $doy $iaac $rinex_sampling_time_in_seconds $elemin4align $konmin4gim_stec $stdev_bi_max4gimcal_tecu $runID $generate_plots $reclst
+	#${bindir1}/gimrnx2stec-one-day.v2.scr $year $doy $iaac $rinex_sampling_time_in_seconds $elemin4align $konmin4gim_stec $stdev_bi_max4gimcal_tecu $runID $generate_plots $reclst
+	echo ${bindir1}/gimrnx2stec-one-day.v3.scr $year $doy $iaac $rinex_sampling_time_in_seconds $rinex_to_be_gathered_locally $elemin4align $konmin4gim_stec $stdev_bi_max4gimcal_tecu $runID $generate_plots $reclst
+	${bindir1}/gimrnx2stec-one-day.v3.scr $year $doy $iaac $rinex_sampling_time_in_seconds $rinex_to_be_gathered_locally $elemin4align $konmin4gim_stec $stdev_bi_max4gimcal_tecu $runID $generate_plots $reclst
+
+	#echo "PROV.EXIT"
+	#exit -1
+
+	@ djm ++
+end
+
+
+STEC_extraction:
+echo
+echo "======================"
+echo " STEC extraction"
+echo "======================"
+
+rm -f ${sfile0}.????
+
+
+set djm = $djm0
+while ( $djm <= $djm1 )
+	echo $djm $djm1
+	set year_month_day = `echo $djm | ${bindir}/djm2cal1`
+	set year = $year_month_day[1]
+	set yy = `echo $year | gawk '{print substr($1,3,2)}'`
+	set month = $year_month_day[2]
+	set monthf = `echo $month | gawk '{printf "%02d",$1}'`
+	set day = $year_month_day[3]
+	set dayf = `echo $day | gawk '{printf "%02d",$1}'`
+	set doy = `echo $year $month $day | ${bindir}/cal2doy2b`
+	set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+	echo $djm $year $month $day $doy $yy
+	echo $monthf $dayf $doyf 
+
+	#foreach sfile ( gimrnx2tec.${year}.${doyf}.${runID}/tic4full2.${iaac}.${year}${doyf}.????.gz )
+	foreach sfile ( gimrnx2tec.${year}.${doyf}.${runID}/tic4full3.${iaac}.${year}${doyf}.????.gz )
+		set rec = `echo $sfile | gawk -F"." '{print $(NF-1)}'`
+	#set sfile = gimrnx2tec.${year}.${doyf}.${runID}/tic4full2.${iaac}.${year}${doyf}.$rec.gz 
+		if ( -f $sfile ) then
+			zcat $sfile | gawk '{yy=$1;doy=$2;th=$3;rec=$4;prn=$5;ele=$6;cycleslip=$20;d2Li=$21;d2Li_max=$22;dBw=$23;dBw_max=$24;tdjm=$41;stec_GIM_tecu=$54;stec_LIcalGIM_tecu=$55;stdev_stec_LIcalGIM=$56;nobs_arc=$57;stec_PIcalGIM_tecu=$58;stdev_stec_PIcalGIM=$59;stec_IG1calGIM_tecu=$60;stdev_stec_IG1calGIM=$61;stec_IG2calGIM_tecu=$62;stdev_stec_IG2calGIM=$63;mapping=+$43;is_d2V5min_computed=$64;d2V5min_tecu=$65;d2Li5min_tecu=$66;printf "%2d %3d %15.12f %s %2d %10.6f %14.8f %10.4f %6d %10.4f %8.4f %10.4f %8.4f %10.4f %8.4f %10.4f %8.4f %16.10e %s %9.5f %9.5f %s %13.8e %13.8f %13.8f %13.8f\n",yy,doy,th,rec,prn,ele,tdjm,stec_GIM_tecu,nobs_arc,stec_LIcalGIM_tecu,stdev_stec_LIcalGIM,stec_PIcalGIM_tecu,stdev_stec_PIcalGIM,stec_IG1calGIM_tecu,stdev_stec_IG1calGIM,stec_IG2calGIM_tecu,stdev_stec_IG2calGIM,mapping,is_d2V5min_computed,d2V5min_tecu,d2Li5min_tecu,cycleslip,d2Li,d2Li_max,dBw,dBw_max}' >> ${sfile0}.${rec}
+		else
+			echo
+			echo "WARNING: Non-existing file "$sfile
+		endif
+	end
+
+	@ djm ++
+end
+echo
+wc -l ${sfile0}.????
+
+
+
+#echo "PROV.EXIT"
+#exit -1
+
+overall_STECvsTIME:
+echo
+echo "======================"
+echo " overall STEC vs TIME "
+echo "======================"
+
+cd ${pwd1}
+echo
+pwd
+ls -l ${sfile0}.????
+
+#
+set stecmax_vtecmax = `gawk 'BEGIN{elemin=+"'$elemin4vtecplot'";stecmax=-999;vtecmax=-999}{ele=+$6;if(ele >= elemin){tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;if(stec_GIM > stecmax){stecmax=stec_GIM};if(stec_LIcalGIM > stecmax){stecmax=stec_LIcalGIM};v[1]=stec_LIcalGIM/mapping;v[2]=stec_GIM/mapping;v[3]=stec_IG1calGIM/mapping;v[4]=stec_IG2calGIM/mapping;v[5]=stec_PIcalGIM/mapping;for(i=1;i<=2;i++){if(v[i]>vtecmax){vtecmax=v[i]}}}}END{print stecmax+1,vtecmax+1}' ${sfile0}.????`
+set d2V300smin_d2V300smax = `gawk 'BEGIN{elemin=+"'$elemin4vtecplot'";d2vtec500smax=-9999;d2vtec500smin=+9999;}{ele=+$6;if(ele >= elemin){tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;if(is_d2V5min_computed=="T"){if(d2V5min_tecu > d2vtec500smax){d2vtec500smax=d2V5min_tecu};if(d2V5min_tecu < d2vtec500smin){d2vtec500smin=d2V5min_tecu}}}}END{print d2vtec500smin-0.01,d2vtec500smax+0.01}' ${sfile0}.????`
+#set dBwmin_dBwmax = `gawk 'BEGIN{elemin=+"'$elemin4vtecplot'";dBwmax=-9999;dBwmin=+9999;}{ele=+$6;if(ele >= elemin){tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;cycleslip=$22;d2Li=$23;dLi_max=$24;dBw=$25;dBw_max=$26;if(dBw > dBwmax){dBwmax=dBw};if(dBw < dBwmin){dBwmin = dBw}}}END{print dBwmin-0.01,dBwmax+0.01}' ${sfile0}.????`
+#set d2LImin_d2LImax = `gawk 'BEGIN{elemin=+"'$elemin4vtecplot'";dBwmax=-9999;dBwmin=+9999;}{ele=+$6;if(ele >= elemin){tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;cycleslip=$22;d2Li=$23;dLi_max=$24;dBw=$25;dBw_max=$26;if(d2Li > d2Limax){d2Limax=d2Li};if(d2Li < d2Limin){d2Limin = d2Li}}}END{print d2Limin-0.001,d2Limax+0.001}' ${sfile0}.????`
+set dBwmin_dBwmax = `gawk 'BEGIN{elemin=+"'$elemin4vtecplot'";dBwmax=-9999;dBwmin=+9999;}{ele=+$6;if(ele >= elemin){tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;cycleslip=$22;d2Li=sqrt($23*$23);dLi_max=$24;dBw=sqrt($25*$25);dBw_max=$26;if(dBw > 0 && dBw > dBwmax){dBwmax=dBw};if(dBw > 0 && dBw < dBwmin){dBwmin = dBw}}}END{print dBwmin,dBwmax}' ${sfile0}.????`
+set d2LImin_d2LImax = `gawk 'BEGIN{elemin=+"'$elemin4vtecplot'";d2Limax=-9999;d2Limin=+9999;}{ele=+$6;if(ele >= elemin){tdjm=$7;stec_GIM=$8;nobs_arc=$9;stec_LIcalGIM=$10;stdev_stec_LIcalGIM=$11;stec_PIcalGIM=$12;stdev_stec_PIcalGIM=$13;stec_IG1calGIM=$14;stdev_stec_IG1calGIM=$15;stec_IG2calGIM=$16;stdev_stec_IG2calGIM=$17;mapping=$18;is_d2V5min_computed=$19;d2V5min_tecu=$20;d2Li5min_tecu=$21;cycleslip=$22;d2Li=sqrt($23*$23);dLi_max=$24;dBw=sqrt($25*$25);dBw_max=$26;if(d2Li > 0 && d2Li > d2Limax){d2Limax=d2Li};if(d2Li > 0 && d2Li < d2Limin){d2Limin = d2Li}}}END{print d2Limin,d2Limax}' ${sfile0}.????`
+
+echo $stecmax_vtecmax
+set stecmax = $stecmax_vtecmax[1]
+echo $stecmax
+set vtecmax = $stecmax_vtecmax[2]
+echo $vtecmax
+set d2V300smin = $d2V300smin_d2V300smax[1]
+echo $d2V300smin
+set d2V300smax = $d2V300smin_d2V300smax[2]
+echo $d2V300smax
+#set dBwmin = $dBwmin_dBwmax[1]
+set dBwmin = 0.001
+echo $dBwmin
+set dBwmax = $dBwmin_dBwmax[2]
+echo $dBwmax
+#set d2LImin = $d2LImin_d2LImax[1]
+set d2LImin = 0.00001
+echo $d2LImin
+set d2LImax = $d2LImin_d2LImax[2]
+echo $d2LImax
+
+#echo "PROV.EXIT"
+#exit -1
+
+echo
+foreach sfile1 ( ${sfile0}.???? )
+	set rec = `echo $sfile1 | gawk -F"." '{print $NF}'`
+	set lon = `grep -w $rec ${totfile} | head -n 1 | gawk '{print $2}'`
+	set lat = `grep -w $rec ${totfile} | head -n 1 | gawk '{print $3}'`
+	echo $rec $sfile0
+	echo $lon $lat
+	#sed s/REC/${rec}/g ${templatesdir}/${plot_template} | sed 's|SFILE0|'${sfile0}'|g' | sed s/YEAR0/${year0}/g | sed s/MONTH0F/${month0f}/g | sed s/DAY0F/${day0f}/g | sed s/DOY0F/${doy0f}/g | sed s/YEAR1/${year1}/g | sed s/MONTH1F/${month1f}/g | sed s/DAY1F/${day1f}/g | sed s/DOY1F/${doy1f}/g | sed s/IAAC/${iaac}/g | sed s/ELEMIN4VTECPLOT/${elemin4vtecplot}/g | sed s/STECMAX/${stecmax}/g | sed s/VTECMAX/${vtecmax}/g | sed s/D2V300SMIN/${d2V300smin}/g | sed s/D2V300SMAX/${d2V300smax}/g | sed s/D2LIMIN/$d2LImin/g | sed s/D2LIMAX/$d2LImax/g | sed s/DBWMIN/$dBwmin/g | sed s/DBWMAX/$dBwmax/g > $sfile1.gnu
+	sed s/REC/${rec}/g ${templatesdir}/${plot_template} | sed 's|SFILE0|'${sfile0}'|g' | sed s/YEAR0/${year0}/g | sed s/MONTH0F/${month0f}/g | sed s/DAY0F/${day0f}/g | sed s/DOY0F/${doy0f}/g | sed s/YEAR1/${year1}/g | sed s/MONTH1F/${month1f}/g | sed s/DAY1F/${day1f}/g | sed s/DOY1F/${doy1f}/g | sed s/IAAC/${iaac}/g | sed s/ELEMIN4VTECPLOT/${elemin4vtecplot}/g | sed s/STECMAX/${stecmax}/g | sed s/VTECMAX/${vtecmax}/g | sed s/D2V300SMIN/${d2V300smin}/g | sed s/D2V300SMAX/${d2V300smax}/g | sed s/D2LIMIN/$d2LImin/g | sed s/D2LIMAX/$d2LImax/g | sed s/DBWMIN/$dBwmin/g | sed s/DBWMAX/$dBwmax/g | sed s/LON/${lon}/g | sed s/LAT/${lat}/g > $sfile1.gnu
+	gnuplot $sfile1.gnu
+	#ls -l $sfile1.png
+	ls -l $spfile0.$rec.png 
+	ls -l $vpfile0.*.$rec.png
+	ls -l $d2v300sfile0*.$rec.png
+	ls -l $d2lifile0*.$rec.png
+	ls -l $dBwifile0*.$rec.png
+	if ( $view_overall_plot_STECvsTIME == "y" || $view_overall_plot_STECvsTIME == "Y" ) then
+		#pqiv -i $sfile1.png
+		pqiv -i $spfile0.$rec.png
+		pqiv -i $vpfile0.*.$rec.png
+		pqiv -i $d2v300sfile0*.$rec.png
+		pqiv -i $d2lifile0*.$rec.png
+		pqiv -i $dBwifile0*.$rec.png
+	endif
+end

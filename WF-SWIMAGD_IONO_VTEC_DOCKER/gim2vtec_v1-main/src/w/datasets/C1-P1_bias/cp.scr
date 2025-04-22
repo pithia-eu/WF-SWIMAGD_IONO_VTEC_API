@@ -1,0 +1,2 @@
+#!/bin/csh -f
+cp -p /home/ionex4/w/run/update_tomion_databases/2017/046/C1-P1_bias/C1-P1.2017.046.all .

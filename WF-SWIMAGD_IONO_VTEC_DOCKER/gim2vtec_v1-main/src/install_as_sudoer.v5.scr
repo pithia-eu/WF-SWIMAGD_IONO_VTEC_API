@@ -1,0 +1,12 @@
+#!/bin/csh -f
+cd ~
+tar xvfz upc_ionsat_tools.v5_release.tgz
+mkdir -p  ~/run/IonSAT-lab_sessions/
+ln -s ~/run/IonSAT-lab_sessions/ ils
+sudo apt install tcsh
+sudo ln -sf /bin/tcsh /bin/csh
+sudo apt install ffmpeg imagemagick
+sudo apt install ncompress
+sudo apt install gnuplot 
+sudo apt install libgfortran3
+sudo apt install pqiv

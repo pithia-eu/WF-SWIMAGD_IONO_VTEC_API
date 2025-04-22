@@ -1,0 +1,8 @@
+#!/bin/sh
+# $Id$
+##############################################################
+# Trivial wrapper for sec2gpsws.e
+# Copyright (C) 2007 California Institute of Technology
+# U.S. Government Sponsorship acknowledged
+##############################################################
+~/opt/goa-5.0/bin/Linux86/sec2gpsws.e $*

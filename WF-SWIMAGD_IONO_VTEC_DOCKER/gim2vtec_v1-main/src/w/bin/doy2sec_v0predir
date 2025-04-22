@@ -1,0 +1,43 @@
+#! /usr/bin/perl
+#printf "%2d\n",$#ARGV;
+# $Id: doy2sec,v 3.3 2003/06/13 17:48:52 kjm Exp $ Ken Hurst 
+if ($#ARGV < 0) {
+  print STDERR "Usage:doy2sec yyyy ddd  [sss]   OR     echo yyyy ddd {sss} | doy2sec -\n";
+  print STDERR "\tconverts to year day second to sec past J2000\n";
+  print STDERR "\tFor more help: doy2sec -H\n";
+  exit 1;
+}
+if ($ARGV[0] =~ /^-H$/){
+  print STDERR "Usage: doy2sec yyyy ddd  [sss]   OR     echo yyyy ddd {sss} | doy2sec -\n";
+  print STDERR "        converts to year day second to sec past J2000\n";
+  print STDERR "Examples:\n";
+  print STDERR "        doy2sec 1988 287\n";
+  print STDERR "        doy2sec 1988 287 4285.35\n";
+  print STDERR "        echo 1988 287 | doy2sec -\n";
+  print STDERR "        cat doy_times | doy2sec - > sec_times\n";
+  exit 1;
+}
+if ($ARGV[0] == "-") {		# in a pipe
+  while (<>) {
+    ($y4,$doy,$dsec,$predir)=split(' ',$_);
+    $sec=`$predir/w/bin/cal2sec $y4 1 1 0 0 0`;
+    $sec=$sec+($doy-1)*86400.0+$dsec;
+    printf "%16.6f\n",$sec;
+  }
+}else {
+  $y4=$ARGV[0];
+  $doy=$ARGV[1];
+  if ($#ARGV == 3) { 
+    $dsec=$ARGV[2];
+    $predir=$ARGV[3];
+  } else{
+    $dsec=0;
+    $predir=$ARGV[2];
+  }
+#  printf "%s\n",$predir;
+#  printf "%4d\n",$y4;
+  $sec=`$predir/w/bin/cal2sec $y4 1 1 0 0 0`;
+#  printf "%16.6f\n",$sec;
+  $sec=$sec+($doy-1)*86400.0+$dsec;
+  printf "%16.6f\n",$sec;
+}

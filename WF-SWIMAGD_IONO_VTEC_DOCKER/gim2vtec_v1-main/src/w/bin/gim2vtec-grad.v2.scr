@@ -1,0 +1,132 @@
+#!/bin/csh -f
+if ( $# != 9 ) then
+	echo "Usage: "$0" year (e.g. 2015)  doy (e.g. 75)  GIM_id (e.g. uqrg)  computation_gradient_mode (consecutive vs centered)  lon0deg_to_study_distrib_vs_time (e.g. -20)  lon1deg_to_study_distrib_vs_time (e.g. 50)  lat0deg_to_study_distrib_vs_time (e.g. 30)  lat1deg_to_study_distrib_vs_time (e.g. 70)  run_id (e.g. MoNEWIC01)"
+	exit -1
+endif
+
+set year = $1
+set doy = $2
+set GIM_id = $3
+set computation_gradient_mode = $4
+set lon0deg_to_study_distrib_vs_time = $5
+set lon1deg_to_study_distrib_vs_time = $6
+set lat0deg_to_study_distrib_vs_time = $7
+set lat1deg_to_study_distrib_vs_time = $8
+set run_id = $9
+
+set doyf = `echo $doy | gawk '{printf "%03d",$1}'`
+set yyf = `echo $year | gawk '{print substr($1,3,2)}'`
+echo $yyf $doyf
+
+set rdir = /home/ionsat-tools-user-01
+
+if ( $computation_gradient_mode == "consecutive" ) then
+	set centered_instead_of_consecutive_mode = 0
+else
+	if ( $computation_gradient_mode == "centered" ) then
+		set centered_instead_of_consecutive_mode = 1
+	else
+		echo "ERROR: unrecognized value "$computation_gradient_mode" for computation_gradient_mode (only supported values: {consecutive,centered}"
+		exit -1
+	endif
+endif
+
+#set lon0deg_to_study_distrib_vs_time = -20
+#set lon1deg_to_study_distrib_vs_time =  50
+#set lat0deg_to_study_distrib_vs_time =  30
+#set lat1deg_to_study_distrib_vs_time =  70
+
+set bindir1 = ${rdir}/w/bin/gim2vtec-grad.v2.scr/w/bin
+set pwd0 = $PWD
+
+set wkdir = ${pwd0}/${run_id}/${year}/{$doyf}.${computation_gradient_mode}
+mkdir -p $wkdir
+cd $wkdir
+
+#wget ftp://cddis.gsfc.nasa.gov/pub/gps/products/ionex/${year}/${doy}/${ionexfile}.Z
+#Usage: /home/ionsat-tools-user-01/w/bin/wget_gps_data.scr year doy download_what(rinex,eph,both,ionex) localrep_sampling(1Hz or 30s)  downdate_final_rinex_from_1Hz_to_30s (y/n)  hour0_1Hz (e.g. 0 or 14)  hour1_1Hz (e.g. 24 or 17)  localrep_basedir (e.g. ~/w/localrep/rinex/geonet)  order_to_look_in_localrep_dir(first or last)  backup_in_localrep (y/n)  rec1(or iaac1 for ionex) ... recn(or iaacn for ionex)
+##${bindir1}/wget_gps_data.scr $year $doy ionex 30s n 0 23 ~/datasets/ionex last y ${GIM_id}
+#${bindir1}/wget_gps_data.scr $year $doy ionex 30s n 0 23 ~/datasets/ionex first y ${GIM_id}
+${bindir1}/wget_gps_data.scr $year $doy ionex 30s n 0 23 ${rdir}/datasets/ionex first y ${GIM_id}
+
+set ionexfile = ${GIM_id}${doyf}0.${yyf}i
+
+if ( ! ( -f $ionexfile.Z ) ) then
+	echo "ERROR: Non available "$ionexfile.Z" nor at local directory nor at server cddis"
+	exit -1
+else
+	ls -l $ionexfile.Z
+endif
+
+rm -f tec.??? rms.??? info.??? t_lat_lon.info dcbs.stations.gps dcbs.satellites.gps dcbs.stations dcbs.satellites
+
+zcat $ionexfile.Z | gawk -f ${bindir1}/ionex2plotlst4.awk
+
+set logTECunitsInTECUs = `gawk '{if(NR==10)print $0}' t_lat_lon.info`
+echo "logTECunitsInTECUs = "$logTECunitsInTECUs
+
+set dTimeInSecs = `gawk '{if(NR==3)print $0}' t_lat_lon.info`
+echo "dTimeInSecs = "$dTimeInSecs
+
+set sel_ext=sel.$lon0deg_to_study_distrib_vs_time"_"$lon1deg_to_study_distrib_vs_time"_"$lat0deg_to_study_distrib_vs_time"_"$lat1deg_to_study_distrib_vs_time
+rm -f dVdY.percetiles_95p_and_95n.$sel_ext dVdY.all.gz dVdY.all.$sel_ext.gz $sel_ext.tmp
+foreach tfile ( tec.??? )
+	set imap = `echo $tfile | gawk -F"." '{print $2}'`
+	set imap1 = `echo $imap | gawk '{print 1*$1}'`
+	set imap0 = `echo $imap1 | gawk '{print $1-1}'`
+	set imap0f = `echo $imap0 | gawk '{printf "%03d",$1}'`
+	set imap00 = `echo $imap1 | gawk '{print $1-2}'`
+	set imap00f = `echo $imap00 | gawk '{printf "%03d",$1}'`
+# Computation of time component of the VTEC gradient
+	if ( $centered_instead_of_consecutive_mode ) then
+
+		if ( $imap1 > 2 ) then
+			paste tec.$imap00f tec.$imap0f tec.$imap | gawk 'BEGIN{re=6371;d2r=atan2(1,1)/45;r2km=re;d2km=d2r*r2km;logTECunitsInTECUs="'$logTECunitsInTECUs'";dTimeInMin=1*"'$dTimeInSecs'"/60;TECinitialUnits2TECUs=10**logTECunitsInTECUs;centered=1*"'$centered_instead_of_consecutive_mode'"}{if(NF==15){lon00=$4;lat00=$5;vtec00=$3;lon0=$9;lat0=$10;vtec0=$8;lon1=$14;lat1=$15;vtec1=$13;if(lon00==lon1 && lat00==lat1 && lon0==lon1 && lat0==lat1){dVdt=(vtec1-vtec00)*TECinitialUnits2TECUs/dTimeInMin;printf "%3d %3d %5d %7.2f %6.2f %13.8f\n",$6,$7,$8,$9,$10,dVdt}}}' > dVdt.$imap0f
+		endif
+	else
+
+		if ( $imap1 > 1 ) then
+
+			paste tec.$imap0f tec.$imap | gawk 'BEGIN{re=6371;d2r=atan2(1,1)/45;r2km=re;d2km=d2r*r2km;logTECunitsInTECUs="'$logTECunitsInTECUs'";dTimeInMin=1*"'$dTimeInSecs'"/60;TECinitialUnits2TECUs=10**logTECunitsInTECUs;centered=1*"'$centered_instead_of_consecutive_mode'"}{if(NF==10){lon0=$4;lat0=$5;vtec0=$3;lon1=$9;lat1=$10;vtec1=$8;if(lon0==lon1 && lat0==lat1){dVdt=(vtec1-vtec0)*TECinitialUnits2TECUs/dTimeInMin;printf "%3d %3d %5d %7.2f %6.2f %13.8f\n",$6,$7,$8,$9,$10,dVdt}}}' > dVdt.$imap
+
+		endif
+
+	endif
+
+	echo $tfile $centered_instead_of_consecutive_mode
+# Computation of the direct VTEC gradient component in latitude (without interpolation), in mTECU/km:
+	#sort -k4n,4 -k5n,5 $tfile | gawk 'BEGIN{re=6371;d2r=atan2(1,1)/45;r2km=re;d2km=d2r*r2km;logTECunitsInTECUs="'$logTECunitsInTECUs'";TECinitialUnits2mTECUs=10**(logTECunitsInTECUs+3)}{lon=$4;lat=$5;vtec=$3;ii=lon" "lat;k[lon]++;if(k[lon]>1){dY=(lat-lat0)*d2km;dV=(vtec-vtec0)*TECinitialUnits2mTECUs;dVdY=dV/dY;printf "%s %10.6f\n",$0,dVdY};lat0=lat;vtec0=vtec}' > dVdY.$imap
+	#ESTOY AQUÍ: sort -k4n,4 -k5n,5 $tfile | gawk 'BEGIN{re=6371;d2r=atan2(1,1)/45;r2km=re;d2km=d2r*r2km;logTECunitsInTECUs="'$logTECunitsInTECUs'";TECinitialUnits2TECUs=10**logTECunitsInTECUs:TECinitialUnits2mTECUs=(10**3)*TECinitialUnits2TECUs}{lon=$4;lat=$5;vtec=$3;ii=lon" "lat;k[lon]++;if(k[lon]>1){dY=(lat-lat0)*d2km;dV=(vtec-vtec0)*TECinitialUnits2mTECUs;Vm=(vtec+vtec0)*TECinitialUnits2mTECUs/2;dVdY=dV/dY;printf "%s %10.6f\n",$0,dVdY};lat0=lat;vtec0=vtec}' > dVdY.$imap
+	sort -k4n,4 -k5n,5 $tfile | gawk 'BEGIN{re=6371;d2r=atan2(1,1)/45;r2km=re;d2km=d2r*r2km;logTECunitsInTECUs="'$logTECunitsInTECUs'";TECinitialUnits2mTECUs=10**(logTECunitsInTECUs+3);centered=1*"'$centered_instead_of_consecutive_mode'"}{lon=$4;lat=$5;vtec=$3;ii=lon" "lat;k[lon]++;if(centered){if(k[lon]>2){dY=(lat-lat00)*d2km;dV=(vtec-vtec00)*TECinitialUnits2mTECUs;dVdY=dV/dY;printf "%s %13.8f\n",record0,dVdY}}else{if(k[lon]>1){dY=(lat-lat0)*d2km;dV=(vtec-vtec0)*TECinitialUnits2mTECUs;dVdY=dV/dY;printf "%s %13.8f\n",$0,dVdY}};lat00=lat0;vtec00=vtec0;lat0=lat;vtec0=vtec;record0=$0}' > dVdY.$imap
+	sort -k5n,5 -k4n,4 $tfile | gawk 'BEGIN{re=6371;d2r=atan2(1,1)/45;r2km=re;d2km=d2r*r2km;logTECunitsInTECUs="'$logTECunitsInTECUs'";TECinitialUnits2mTECUs=10**(logTECunitsInTECUs+3);centered=1*"'$centered_instead_of_consecutive_mode'"}{lon=$4;lat=$5;vtec=$3;ii=lon" "lat;k[lat]++;if(centered){if(k[lat]>2){dX=(lon-lon00)*d2km*cos(lat0*d2r);dV=(vtec-vtec00)*TECinitialUnits2mTECUs;dVdX=dV/dX;printf "%s %13.8f\n",record0,dVdX}}else{if(k[lat]>1){dX=(lon-lon0)*d2km*cos((lat+lat0)*d2r/2);dV=(vtec-vtec0)*TECinitialUnits2mTECUs;dVdX=dV/dX;printf "%s %13.8f\n",$0,dVdX}};lat00=lat0;vtec00=vtec0;lat0=lat;lon00=lon0;lon0=lon;vtec0=vtec;record0=$0}' > dVdX.$imap
+	ls -l ${PWD}/dVd?.$imap
+	wc -l ${PWD}/dVd?.$imap
+	gawk 'BEGIN{lon0=1*"'$lon0deg_to_study_distrib_vs_time'";lon1=1*"'$lon1deg_to_study_distrib_vs_time'";lat0=1*"'$lat0deg_to_study_distrib_vs_time'";lat1=1*"'$lat1deg_to_study_distrib_vs_time'";print lon0,lon1,lat0,lat1 > "'$sel_ext'.tmp"}{lon=1*$4;lat=1*$5;if(lon >= lon0 && lon <= lon1 && lat >= lat0 && lat <= lat1){print $0}}' dVdY.$imap | sort -k6g,6 > dVdY.$imap.$sel_ext
+	gawk 'BEGIN{lon0=1*"'$lon0deg_to_study_distrib_vs_time'";lon1=1*"'$lon1deg_to_study_distrib_vs_time'";lat0=1*"'$lat0deg_to_study_distrib_vs_time'";lat1=1*"'$lat1deg_to_study_distrib_vs_time'";print lon0,lon1,lat0,lat1 > "'$sel_ext'.tmp"}{lon=1*$4;lat=1*$5;if(lon >= lon0 && lon <= lon1 && lat >= lat0 && lat <= lat1){print $0}}' dVdX.$imap | sort -k6g,6 > dVdX.$imap.$sel_ext
+	if ( -f dVdt.$imap ) then
+		gawk 'BEGIN{lon0=1*"'$lon0deg_to_study_distrib_vs_time'";lon1=1*"'$lon1deg_to_study_distrib_vs_time'";lat0=1*"'$lat0deg_to_study_distrib_vs_time'";lat1=1*"'$lat1deg_to_study_distrib_vs_time'";print lon0,lon1,lat0,lat1 > "'$sel_ext'.tmp"}{lon=1*$4;lat=1*$5;if(lon >= lon0 && lon <= lon1 && lat >= lat0 && lat <= lat1){print $0}}' dVdt.$imap | sort -k6g,6 > dVdt.$imap.$sel_ext
+	endif
+	#echo "PROV.EXIT"
+	ls -l ${PWD}/dVd?.$imap.$sel_ext
+	wc -l ${PWD}/dVd?.$imap.$sel_ext
+	#cat ${PWD}/dVdY.$imap.$sel_ext
+	#rm ${PWD}/dVdY.$imap.$sel_ext
+	#exit -1
+	gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1;imap="'$imap'";itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600)}{dVdY=1*$6;if(dVdY>0){kp++;dVdYp[kp]=dVdY}else{kn++;dVdYn[kn]=dVdY}}END{k95p=int(0.95*kp+.5);k95n=int(0.05*kn+.5);printf "%4d %2d %2d %5.2f %7d %7d %13.8f %7d %7d %13.8f\n",year0,month0,day0,ithhmmf,k95p,kp,dVdYp[k95p],k95n,kn,dVdYn[k95n]}'  dVdY.$imap.$sel_ext >> dVdY.percetiles_95p_and_95n.$sel_ext
+	gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1;imap="'$imap'";itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600)}{dVdY=1*$6;if(dVdY>0){kp++;dVdYp[kp]=dVdY}else{kn++;dVdYn[kn]=dVdY}}END{k95p=int(0.95*kp+.5);k95n=int(0.05*kn+.5);printf "%4d %2d %2d %5.2f %7d %7d %13.8f %7d %7d %13.8f\n",year0,month0,day0,ithhmmf,k95p,kp,dVdYp[k95p],k95n,kn,dVdYn[k95n]}'  dVdX.$imap.$sel_ext >> dVdX.percetiles_95p_and_95n.$sel_ext
+	if ( -f dVdt.$imap.$sel_ext ) then
+		gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1;imap="'$imap'";itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600)}{dVdY=1*$6;if(dVdY>0){kp++;dVdYp[kp]=dVdY}else{kn++;dVdYn[kn]=dVdY}}END{k95p=int(0.95*kp+.5);k95n=int(0.05*kn+.5);printf "%4d %2d %2d %5.2f %7d %7d %13.8f %7d %7d %13.8f\n",year0,month0,day0,ithhmmf,k95p,kp,dVdYp[k95p],k95n,kn,dVdYn[k95n]}'  dVdt.$imap.$sel_ext >> dVdt.percetiles_95p_and_95n.$sel_ext
+	endif
+	#echo "PROV.EXIT"
+	#exit -1
+end
+wc -l dVdY.percetiles_95p_and_95n.$sel_ext
+gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1}{imap=1*substr(FILENAME,6,3);itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600);printf "%s %4d %2d %2d %5.2f\n",$0,year0,month0,day0,ithhmmf}' dVdY.[0-9][0-9][0-9] | gzip > dVdY.all.gz
+gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1}{imap=1*substr(FILENAME,6,3);itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600);printf "%s %4d %2d %2d %5.2f\n",$0,year0,month0,day0,ithhmmf}' dVdX.[0-9][0-9][0-9] | gzip > dVdX.all.gz
+gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1}{imap=1*substr(FILENAME,6,3);itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600);printf "%s %4d %2d %2d %5.2f\n",$0,year0,month0,day0,ithhmmf}' dVdt.[0-9][0-9][0-9] | gzip > dVdt.all.gz
+ls -l dVd?.all.gz
+gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1}{imap=1*substr(FILENAME,6,3);itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600);printf "%s %4d %2d %2d %5.2f\n",$0,year0,month0,day0,ithhmmf}' dVdY.[0-9][0-9][0-9].$sel_ext | gzip > dVdY.all.$sel_ext.gz
+gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1}{imap=1*substr(FILENAME,6,3);itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600);printf "%s %4d %2d %2d %5.2f\n",$0,year0,month0,day0,ithhmmf}' dVdX.[0-9][0-9][0-9].$sel_ext | gzip > dVdX.all.$sel_ext.gz
+gawk 'BEGIN{getline < "t_lat_lon.info";year0=$1;month0=$2;day0=$3;thhmm0=$4+$5/60+$6/3600;getline < "t_lat_lon.info";getline < "t_lat_lon.info";idtsec=$1}{imap=1*substr(FILENAME,6,3);itsec=(imap-1)*idtsec+thhmm0;ithhmmf=sprintf("%5.2f",itsec/3600);printf "%s %4d %2d %2d %5.2f\n",$0,year0,month0,day0,ithhmmf}' dVdt.[0-9][0-9][0-9].$sel_ext | gzip > dVdt.all.$sel_ext.gz
+rm -f dVd?.[0-9][0-9][0-9].$sel_ext
+ls -l dVd?.all.$sel_ext.gz

@@ -1,0 +1,44 @@
+#!/bin/csh -f
+#
+mkdir -p ~/run
+cd ~/run
+echo "################################################################################"
+echo "gim2vtec utility: it generates time series (VTECvsTIME) and meridional evolution"
+echo "                  of VTEC (VTECvsLAT), extracted from Global Ionospheric Maps   "
+echo "                  of Vertical Total Electron Content, stored in IONEX format.   "
+echo "                                                                                "
+echo "                  (c) 2017-2025, UPC-IonSAT, Barcelona, Spain                   "
+echo "################################################################################"
+echo 
+echo "Executive help provided by calling it without the right number of arguments: "
+echo
+echo "                             => (VTECvsTIME)  year0 (e.g. 2017)  month0 (e.g. 6)  day_of_month0 (e.g. 12)  year1 (e.g. 2017)  month1 (e.g. 6)  day_of_month1 (e.g. 14)  GIM_IONEX_ID (e.g. uqrg)  dtsec_GIM_VTEC (e.g. 120)  runID (e.g. Tractor_exp)  view_final_plots (y/n)  run_level (VTECvsTIME_extraction, VTECvsTIME_plots)  receiverID_1 (e.g. borj) ... receiverID_N (e.g. ijmu)"
+echo "                           //"
+echo " Usage: gim2vtec.v2b.scr runmode"
+echo "                           \\"
+echo "                             => (VTECvsLAT)  year (e.g. 2017)  month0 (e.g. 6)  day_of_month0 (e.g. 12)  month1 (e.g. 6)  day_of_month1 (e.g. 14)  longitude (e.g. 4.556064337)  GIM_IONEX_ID (e.g. uqrg)  runID (e.g. Tractor_exp)  view_final_plots (y/n)  run_level (VTECvsLAT_extraction, VTECvsLAT_movie)"
+echo
+echo "Example: 10-13 May 2024 major geomagnetic storm"
+echo
+echo "VTECvsTIME examples: From UQRG UPC-IonSAT GIM, during 8-14 May, and at EBRE observatory, Catalonia, Spain, and at JPLM, California, USA"
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2024 5 8 2024 5 14 uqrg 120 May2024storm y VTECvsTIME_extraction ebre jplm"
+echo
+~/w/bin/gim2vtec.v2b.scr VTECvsTIME 2024 5 8 2024 5 14 uqrg 120 May2024storm y VTECvsTIME_extraction ebre jplm
+echo
+echo
+echo "VTECvsLAT examples: From UQRG UPC-IonSAT GIM, during 10-13 May, and at EBRE observatory meridian (longitude of E 0.4923588 deg), and at JPLM meridian (longitude of E 241.826771 deg)"
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2024 5 10 5 13 0.4923588 uqrg May2024storm n VTECvsLAT_extraction"
+echo "                                    and                                                            "
+echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2024 5 10 5 13 241.826771 uqrg May2024storm n VTECvsLAT_extraction"
+echo
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2024 5 10 5 13 0.4923588 uqrg May2024storm n VTECvsLAT_extraction
+echo "                                    and                                                            "
+~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2024 5 10 5 13 241.826771 uqrg May2024storm n VTECvsLAT_extraction
+echo
+#echo "###########################################################################"
+#
+#echo "AUDITOR tractor experiment 2017 6 13 on The Netherlands (AUDITORJun2017)"
+#
+#echo "VTEC evolution over the AUDITOR tractor exp. (The Netherlands)"
+#echo "~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 12 6 13 4.556064337 uqrg AUDITOR n VTECvsLAT_extraction"
+#~/w/bin/gim2vtec.v2b.scr VTECvsLAT 2017 6 12 6 13 4.556064337 uqrg AUDITOR n VTECvsLAT_extraction

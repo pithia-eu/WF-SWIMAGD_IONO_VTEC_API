@@ -1,0 +1,6 @@
+#!/bin/csh -f
+####~/wrt/bin/active_stations.PENDING_to_get_XYZ_ANT_AND_WLF.sta_2_messages1.input.header.scr
+rm -f temp.tot
+~/bin/rnx2tot.v3c.scr amun1140.01d.Z
+gawk -f ~/w/bin/tot_2_xyz.awk temp.tot > amun.xyz
+ls -l amun.xyz

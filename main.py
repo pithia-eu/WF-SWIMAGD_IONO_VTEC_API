@@ -46,7 +46,8 @@ CHAR_COLORS = {
     'hF2': '#6D1582',
     'mufD': '#D86ECC',
     'phF2lyr': '#156082',
-    'scHgtF2pk': '#0D3512'
+    'scHgtF2pk': '#0D3512',
+    'VTEC': '#FF0000',
 }
 
 # Define the set of valid stations and characteristics for the SAO metadata API
@@ -55,7 +56,7 @@ VALID_STATIONS = {
 }
 SORTED_VALID_STATIONS = ','.join(sorted(VALID_STATIONS))
 VALID_CHARACTERISTICS = {
-    'b0IRI', 'fbEs', 'ff', 'foE', 'foEs', 'foF2', 'hE', 'hEs', 'hF2', 'mufD', 'phF2lyr', 'scHgtF2pk'
+    'b0IRI', 'fbEs', 'ff', 'foE', 'foEs', 'foF2', 'hE', 'hEs', 'hF2', 'mufD', 'phF2lyr', 'scHgtF2pk', 'VTEC'
     #'foF1', 'mD', 'fmin',  'fminF', 'fminE',  'fxI', 'hF''zmE', 'yE', 'qf', 'qe', 'downF', 'downE', 'downEs',  'fe', 'd', 'fMUF''hfMUF', 'delta_foF2', 'foEp', 'fhF', 'fhF2', 'foF1p', 'phF1lyr', 'zhalfNm', 'foF2p', 'fminEs', 'yF2', 'yF1', 'tec', 'b1IRI', 'd1IRI', 'foEa', 'hEa', 'foP', 'hP',  'typeEs'
 }
 
@@ -69,7 +70,11 @@ HEIGHT_CHARACTERISTICS = {
     'b0IRI', 'hE', 'hEs', 'hF2', 'phF2lyr', 'scHgtF2pk'
 }
 
-SORTED_BOTH_CHARACTERISTICS = ','.join(sorted(FREQ_CHARACTERISTICS.union(HEIGHT_CHARACTERISTICS)))
+VTEC_CHARACTERISTICS = {
+    'VTEC'
+}
+
+SORTED_BOTH_CHARACTERISTICS = ','.join(sorted(FREQ_CHARACTERISTICS.union(HEIGHT_CHARACTERISTICS).union(VTEC_CHARACTERISTICS)))
 
 # Get the full path to the directory containing the FastAPI script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -268,7 +273,7 @@ async def download_sao_metadata_zip(start_datetime: str = Query(..., description
 
 # Define the new `run_workflow` API
 @app.get("/run_workflow/", response_class=StreamingResponse, responses={200: {"content": {"application/octet-stream": {}},"description": "**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n",}},summary="Run the SWIMAGD_IONO workflow.", description="Return KP data, B data, and SAO metadata, and optionally compress the results into a single ZIP file or receive them in JSON format.\n\n"+"**Important:** When selecting the 'zip' format, please remember to rename the downloaded file to have the extension '*.zip' before opening it.\n\n", tags=["Run Workflow"])
-async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2024-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2024-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {SORTED_VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,ff,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk, where phF2ly=hmF2."),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'zip' and 'json'.")):
+async def run_workflow(start_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2024-01-01T00:00:00 "), end_datetime: str = Query(..., description="Datetime in the format 'YYYY-MM-DDTHH:MM:SS', e.g. 2024-01-01T00:00:00"), stations: str = Query(..., description=f"Comma-separated list of stations, e.g. AT138,DB049. Full list of valid stations: {SORTED_VALID_STATIONS}"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,ff,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk,VTEC, where phF2ly=hmF2."),format: OutputFormat = Query(..., description="The format of the output file. Valid values are 'zip' and 'json'.")):
     error_message = {"error":""}
     # Remove any whitespace from the stations and characteristics
     stations = stations.replace(' ', '')
@@ -448,16 +453,17 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
 
 # Define the 'plot_data' API
 @app.get("/plot_data/", response_class=StreamingResponse, summary="Plot the KP data, B data, and SAO metadata for selected station.", description="Plot the KP data, B data, and SAO metadata.", tags=["Plot Data"])
-async def plot_data(date_of_interest: str = Query(..., description="Date in the format 'YYYY-MM-DD', e.g. 2023-01-01"), station: Stations = Query(..., description=f"Select a station"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk, where phF2ly=hmF2.")):
+async def plot_data(date_of_interest: str = Query(..., description="Date in the format 'YYYY-MM-DD', e.g. 2023-01-01"), station: Stations = Query(..., description=f"Select a station"), characteristics: str = Query(..., description=f"Comma-separated list of characteristics, e.g. foF2,foE. Full list of valid characteristics: b0IRI,fbEs,foE,foEs,foF2,hE,hEs,hF2,mufD,phF2lyr,scHgtF2pk,VTEC, where phF2ly=hmF2.")):
     error_message = {"error":""}
     # Remove any whitespace from the characteristics
     characteristics = characteristics.replace(' ', '')
+    original_characteristics = ','.join(sorted(characteristics.split(',')))
     # Sort the stations and characteristics a-z
     characteristics = ','.join(sorted(characteristics.split(',')))
-    
     # Validate the inputs
-    if not set(characteristics.split(',')).issubset(FREQ_CHARACTERISTICS.union(HEIGHT_CHARACTERISTICS)):
-        error_message['error']=f"One or more characteristics are invalid. Here is the list of valid characteristics: {SORTED_BOTH_CHARACTERISTICS}"
+    if not set(characteristics.split(',')).issubset(set(SORTED_BOTH_CHARACTERISTICS.split(','))):
+        print(f"characteristics: {characteristics}, SORTED_BOTH_CHARACTERISTICS: {SORTED_BOTH_CHARACTERISTICS}")
+        error_message['error']=f"One or more characteristics are invalid:{set(characteristics.split(','))}. Here is the list of valid characteristics: {SORTED_BOTH_CHARACTERISTICS}"
         return JSONResponse(status_code=200, content=error_message)
     # Validate the date of interest
     try:
@@ -465,10 +471,29 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     except ValueError:
         error_message['error']="Invalid date format. Ensure the format is YYYY-MM-DD."
         return JSONResponse(status_code=200, content=error_message)
-    
+
     # Generate start_datetime and end_datetime from date_of_interest, which include the previous day data, and the next day data, at time 00:00:00
     start_datetime = (datetime.strptime(date_of_interest, '%Y-%m-%d')-timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S')
+    next_datetime = (datetime.strptime(date_of_interest, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S')
     end_datetime = (datetime.strptime(date_of_interest, '%Y-%m-%d') + timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%S')
+    has_vtec = False
+    vtec_data = None
+    if 'VTEC' in characteristics:
+        has_vtec = True
+        # Call the get_vtec function to get the VTEC data
+        # Get the VTEC data
+        # Convert the station to lower case and get the first 4 characters
+        data = get_vtec(start_datetime, next_datetime, station.lower()[:4])
+        data = json.loads(data["data"])
+        # Convert nested dict to DataFrame
+        vtec_data = pd.DataFrame.from_dict(data, orient='index')
+
+        # Convert 'datetime' from Unix ms to pandas datetime
+        vtec_data['datetime'] = pd.to_datetime(vtec_data['datetime'], unit='ms')
+
+        # If you want to filter out zero values
+        vtec_data = vtec_data[vtec_data['VTEC'] > 0]
+
     # Construct the X Axis in Array, with 5 minutes interval, from start_datetime to end_datetime
     
     # Get the KP data
@@ -507,8 +532,13 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     except Exception as e:
         error_message['error'] = f"Error processing output: {str(e)}"
         return JSONResponse(status_code=200, content=error_message)
-    
-    fig,(ax_b,ax_kp, ax_freq, ax_height) = plt.subplots(4,1, figsize=(16,9), dpi=100)
+    nrows = 4
+    figsize = (16, 9)
+    fig, (ax_b, ax_kp, ax_freq, ax_height) = plt.subplots(nrows, 1, figsize=figsize, dpi=100)
+    if has_vtec:
+        nrows = 5
+        figsize = (16, 12)
+        fig,(ax_b,ax_kp, ax_freq, ax_height, ax_vtec) = plt.subplots(nrows,1, figsize=figsize, dpi=100)
     # For all the subplots, set the x-axis range from start_datetime-2 hours to end_datetime+2 hours, need to convert the string to datetime
     start_datetime_offset = datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S') - timedelta(hours=2)
     end_datetime_offset = datetime.strptime(end_datetime, '%Y-%m-%dT%H:%M:%S') + timedelta(hours=2)
@@ -530,7 +560,8 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         ax.set_axisbelow(True)
         # if is ax_height, use customed x-axis label, format as 00:00:00, new line, Jan 01, 2023
         if ax == ax_height:
-            ax.set_xticklabels([datetime.strftime(x, '%H:%M:%S\n%b %d, %Y') for x in major_ticks])
+            if not has_vtec:
+                ax.set_xticklabels([datetime.strftime(x, '%H:%M:%S\n%b %d, %Y') for x in major_ticks])
     # Plot the KP data using bar chart, skip the timestamp with 0 value
     ax_kp.bar(x_axis, kp_y_axis, width=0.04, color='#156082', label='Kp')
     # Set the kp y-axis range from min to max of kp_y_axis offset by 0.5
@@ -596,26 +627,12 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     # Fix the legend position to the top right corner
     ax_b.legend(ncol=4, loc='upper right')
     ax_b.set_title(f'DSCOVR mission Magdata records')
-    
-    # Get the SAO metadata
-    sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
-    selected_station = station.value
-    command = ['python3', sao_script_path, start_datetime, end_datetime, selected_station, characteristics]
-    # Execute the script and capture the output
-    try:
-        process = subprocess.run(command, check=True, capture_output=True, text=True)
-        stdout, stderr = process.stdout, process.stderr
-        
-        if process.returncode != 0:
-            error_message['error'] = stderr.decode()
-            return JSONResponse(status_code=200, content=error_message)
-        
-    except subprocess.CalledProcessError as e:
-        error_message['error'] = json.loads(e.stdout)
-        return JSONResponse(status_code=200, content=error_message)
-    # x_axis is 5 minutes interval, from start_datetime to end_datetime
-    x_axis = pd.date_range(start_datetime, end_datetime, freq='5min')
-    # Check the characteristics, depending which type of characteristics frequency or height, create the y_axis arrays group by type
+
+    # no VTEC characteristics, remove the VTEC axis
+    if has_vtec:
+        characteristics = set(characteristics.split(',')) - set(['VTEC'])
+        characteristics = ','.join(sorted(characteristics))
+    sao_df = None
     freq_y_characteristics = []
     height_y_characteristics = []
     for characteristic in characteristics.split(','):
@@ -623,26 +640,47 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
             freq_y_characteristics.append(characteristic)
         if characteristic in HEIGHT_CHARACTERISTICS:
             height_y_characteristics.append(characteristic)
-    
-    sao_df = pd.DataFrame()
-    try:
-        # Need to skip the first line, which is the file name
-        sao_df = pd.read_csv(StringIO(stdout), sep=',', header=0, index_col=0, skiprows=1)
-        sao_df.index = pd.to_datetime(sao_df.index)
-    except Exception as e:
-        error_message['error'] = f"Error processing output: {str(e)}"
-    sao_df_x_axis = pd.to_datetime(sao_df.index)
-    x_axis = pd.to_datetime(x_axis)
-    
-    # Union the sao_df index with the x_axis, reordering the sao_df_index from earliest to latest
-    new_x_axis = x_axis.union(sao_df_x_axis).sort_values()
-    # Load the new_sao_df with the cnew sao_df_x_axis, fill the missing value with np.nan
-    new_sao_df = sao_df.reindex(new_x_axis).fillna(np.nan)
-    # Replace the value in new_sao_df with the value from sao_df with the same index
-    new_sao_df = new_sao_df.combine_first(sao_df)
-    print(f"New x-axis size: {len(x_axis)} U {len(sao_df_x_axis)} = {len(new_x_axis)}")
+    selected_station = station.value
+    if len(characteristics) > 0:
+        # Get the SAO metadata
+        sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
 
-    
+        command = ['python3', sao_script_path, start_datetime, end_datetime, selected_station, characteristics]
+        # Execute the script and capture the output
+        try:
+            process = subprocess.run(command, check=True, capture_output=True, text=True)
+            stdout, stderr = process.stdout, process.stderr
+
+            if process.returncode != 0:
+                error_message['error'] = stderr.decode()
+                return JSONResponse(status_code=200, content=error_message)
+
+        except subprocess.CalledProcessError as e:
+            error_message['error'] = json.loads(e.stdout)
+            return JSONResponse(status_code=200, content=error_message)
+        # x_axis is 5 minutes interval, from start_datetime to end_datetime
+        x_axis = pd.date_range(start_datetime, end_datetime, freq='5min')
+        # Check the characteristics, depending which type of characteristics frequency or height, create the y_axis arrays group by type
+
+        sao_df = pd.DataFrame()
+        try:
+            # Need to skip the first line, which is the file name
+            sao_df = pd.read_csv(StringIO(stdout), sep=',', header=0, index_col=0, skiprows=1)
+            sao_df.index = pd.to_datetime(sao_df.index)
+        except Exception as e:
+            error_message['error'] = f"Error processing output: {str(e)}"
+        sao_df_x_axis = pd.to_datetime(sao_df.index)
+        x_axis = pd.to_datetime(x_axis)
+
+        # Union the sao_df index with the x_axis, reordering the sao_df_index from earliest to latest
+        new_x_axis = x_axis.union(sao_df_x_axis).sort_values()
+        # Load the new_sao_df with the cnew sao_df_x_axis, fill the missing value with np.nan
+        new_sao_df = sao_df.reindex(new_x_axis).fillna(np.nan)
+        # Replace the value in new_sao_df with the value from sao_df with the same index
+        new_sao_df = new_sao_df.combine_first(sao_df)
+        print(f"New x-axis size: {len(x_axis)} U {len(sao_df_x_axis)} = {len(new_x_axis)}")
+
+
     # Set the x-axis range from sao_df index min to max, with 1 second interval
     ax_freq.set_xlim(start_datetime_offset, end_datetime_offset)
     ax_height.set_xlim(start_datetime_offset, end_datetime_offset)
@@ -652,48 +690,83 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     # plt.setp(ax_freq.get_xticklabels(), visible=False)
     ax_height.set_ylabel(f'Heights [km]')
     ax_height.set_title(f'{selected_station} - Ionospheric characteristics - heights: {",".join(height_y_characteristics)} [km]')
-    if sao_df.empty==False:
-        if len(freq_y_characteristics) > 0:
-            # Plot the frequency characteristics
-            for characteristic in freq_y_characteristics:
-                ax_freq.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
-            # Leave some space at the top of the plot, set the bottom of the plot to 0
-            ax_freq.set_ylim(bottom=0, top=ax_freq.get_ylim()[1]+10)
-            # Add major ticks to the Y-axis, maximum 5 ticks
-            ax_freq.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
-            # For each locator, include both major and minor ticks, and draw the grid lines
-            ax_freq.yaxis.grid(True, linestyle='-', linewidth=0.5)
-            # Make the marker in the legend to be bigger
-            ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right', markerscale=2)
-            # Display the legend in columns, all columns in one row
-            
-            
-        else:
-            ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
-        if len(height_y_characteristics) > 0:
-            # Plot the height characteristics
-            for characteristic in height_y_characteristics:
-                ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
-            
-            # Leave some space at the top of the plot
-            ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)
-            # Add major ticks to the Y-axis, maximum 5 ticks
-            ax_height.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
-            # For each tick, draw a horizontal line
-            ax_height.yaxis.grid(True, linestyle='-', linewidth=0.5)
-            # Make the marker in the legend to be bigger
-            ax_height.legend(ncol=len(height_y_characteristics), loc='upper right', markerscale=2)
-        else:
-            ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
+    if sao_df is None:
+        # Add text to the plot, no data available for the selected station, date_of_interest, and characteristics
+        ax_freq.text(0.5, 0.5, f"No characteristics (frequencies) is selected", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
+        ax_height.text(0.5, 0.5, f"No characteristics (heights) is selected", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
     else:
-        # Add text to the plot, no data available for the selected station, date_of_interest, and characteristics
-        ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
-        # Add text to the plot, no data available for the selected station, date_of_interest, and characteristics
-        ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
-    
+        if sao_df.empty == False:
+            if len(freq_y_characteristics) > 0:
+                # Plot the frequency characteristics
+                for characteristic in freq_y_characteristics:
+                    ax_freq.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
+                # Leave some space at the top of the plot, set the bottom of the plot to 0
+                ax_freq.set_ylim(bottom=0, top=ax_freq.get_ylim()[1]+10)
+                # Add major ticks to the Y-axis, maximum 5 ticks
+                ax_freq.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
+                # For each locator, include both major and minor ticks, and draw the grid lines
+                ax_freq.yaxis.grid(True, linestyle='-', linewidth=0.5)
+                # Make the marker in the legend to be bigger
+                ax_freq.legend(ncol=len(freq_y_characteristics), loc='upper right', markerscale=2)
+                # Display the legend in columns, all columns in one row
+            else:
+                ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
+            if len(height_y_characteristics) > 0:
+                # Plot the height characteristics
+                for characteristic in height_y_characteristics:
+                    ax_height.plot(new_x_axis.values,new_sao_df[characteristic].values,linestyle="",label=characteristic,linewidth=1, color=CHAR_COLORS[characteristic], marker='o', markersize=1, alpha=0.7)
+
+                # Leave some space at the top of the plot
+                ax_height.set_ylim(top=ax_height.get_ylim()[1]+100)
+                # Add major ticks to the Y-axis, maximum 5 ticks
+                ax_height.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
+                # For each tick, draw a horizontal line
+                ax_height.yaxis.grid(True, linestyle='-', linewidth=0.5)
+                # Make the marker in the legend to be bigger
+                ax_height.legend(ncol=len(height_y_characteristics), loc='upper right', markerscale=2)
+            else:
+                ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
+        else:
+            # Add text to the plot, no data available for the selected station, date_of_interest, and characteristics
+            ax_freq.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(freq_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_freq.transAxes)
+            # Add text to the plot, no data available for the selected station, date_of_interest, and characteristics
+            ax_height.text(0.5, 0.5, f"No data available for the selected station ({selected_station}), date period ({start_datetime} - {end_datetime}), and characteristics ({','.join(height_y_characteristics)})", horizontalalignment='center', verticalalignment='center', transform=ax_height.transAxes)
+
+    # Add the VTEC data to the plot, if has_vtec is True
+    if has_vtec:
+        # Set the x-axis range from start_datetime-2 hours to end_datetime+2 hours, need to convert the string to datetime
+        ax_vtec.set_xlim(start_datetime_offset, end_datetime_offset)
+        # Calculate the major tick positions
+        ax_vtec.set_xticks(major_ticks)
+        ax_vtec.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        # Set the minor ticks to be every 1 hour
+        ax_vtec.xaxis.set_minor_locator(mdates.HourLocator(interval=1))
+        # Plot the x-axis with grey color, linewidth 0.5, from top to bottom
+        ax_vtec.xaxis.grid(True, which='major', color='grey', linestyle='-', linewidth=0.5)
+        # Plot the x-axis for minor ticks without any text
+        ax_vtec.xaxis.grid(True, which='minor', color='lightgrey', linestyle='-', linewidth=0.5)
+        # Make all the lines in the plot to be under the grid lines, not cover the data
+        ax_vtec.set_axisbelow(True)
+        # Set the y-axis label
+        ax_vtec.set_ylabel('VTEC / TECUs')
+        # Plot the VTEC data using dots, skip the timestamp with 0 value
+        ax_vtec.plot(vtec_data['datetime'], vtec_data['VTEC'], linestyle="", label='VTEC', linewidth=1, color='#156082', marker='o', markersize=1, alpha=0.7)
+        # Set the y-axis range from min to max of vtec_data['VTEC'] offset by 0.5
+
+        ax_vtec.set_ylim(0, max(vtec_data['VTEC'])+0.5)
+        # Set the major ticks, maximum 5 ticks
+        ax_vtec.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
+        # Draw the horizontal line at each major tick position
+        ax_vtec.yaxis.grid(True, linestyle='-', linewidth=0.5)
+        # Set the legend
+        ax_vtec.legend()
+        # Set the title
+        ax_vtec.set_title(f'{selected_station} - Vertical Total Electron Content (VTEC)')
+        ax_vtec.set_xticklabels([datetime.strftime(x, '%H:%M:%S\n%b %d, %Y') for x in major_ticks])
+
     plt.tight_layout()
     # Save the plot to a temporary file, png format, filename is station_date_of_interest_characteristics_seperated_by_-.png
-    plot_filename = f"{selected_station}_{date_of_interest}_{characteristics.replace(',','-')}.png"
+    plot_filename = f"{selected_station}_{date_of_interest}_{original_characteristics.replace(',','-')}.png"
     plt.savefig(f'/tmp/{plot_filename}')
     plt.close()
     # Return the output as a FileResponse
@@ -702,4 +775,44 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
     }
     return FileResponse(f"/tmp/{plot_filename}", media_type="image/png", headers=headers)
     
-    
+def get_vtec(
+        start_date: str,
+        end_date: str,
+        station_id: str
+):
+    try:
+        # Run the shell script
+        result = subprocess.run(
+            ["bash", "./run_script.sh", start_date, end_date, station_id],  # make sure script is executable and has correct path
+            capture_output=True,
+            text=True,
+            check=False  # let us handle errors ourselves
+        )
+
+        # Try to parse the script output as JSON
+        try:
+            output = json.loads(result.stdout)
+            # Now load the file content in the output.file
+            if "file" in output:
+                with open(output["file"], "r") as f:
+                    # Use pd to read the file
+                    df = pd.read_csv(output["file"], header=None, sep=r"\s+")
+                    # Sample row: 24 130 24.00000000 at13  0  90.00 251.787  38.000   23.500  0.0000000000000E+00    2.8583 -0.2858310001254E+01    2.8583 T T 60440.0000000
+                    # year day_of_year hour station ? ? ? ? ? ? VTEC ? ? ? ? ?
+                    # Add the column names to the dataframe
+                    df.columns = ['year', 'day_of_year', 'hour', 'station', 'col_5', 'col_6', 'col_7', 'col_8', 'col_9', 'col_10', 'VTEC', 'col_12', 'col_13', 'col_14', 'col_15', 'julian_day',]
+                    # Convert the year day_of_year hour to datetime, and add it to the dataframe, and get the VTEC, datetime
+                    df['datetime'] = pd.to_datetime("20"+df['year'].astype(str), format='%Y') + pd.to_timedelta(df['day_of_year'] - 1, unit='D') + pd.to_timedelta(df['hour'], unit='h')
+                    df= df[['datetime', 'julian_day', 'VTEC']]
+                    # Convert the dataframe to json
+                    output["data"] = df.to_json(orient='index')
+                    return output
+            else:
+                # If the file is not in the output, return the output as json
+                return output
+        except json.JSONDecodeError:
+            # If the output is not in json format, return the output as text
+            return {"error": result.stdout}
+
+    except Exception as e:
+        return {"error": str(e)}

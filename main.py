@@ -1,3 +1,4 @@
+import io
 import tempfile
 import uuid
 from fastapi import FastAPI, HTTPException, Query
@@ -95,10 +96,10 @@ app = FastAPI(
             "description": "Plot the KP data, B data, and SAO metadata for selected station"
         }
     ],
-    title="SWIMAGD_IONO Workflow API",
-    description="The SWIMAGD_IONO workflow provides: <br /><br />(a) Geomagnetic three-hourly (T00:00:00, T03:00:00, …, T21:00:00) Kp index​; <br />(b) DSCOVR mission Magdata records (Bmag, Bx, By, Bz) as part of the SWIF model Data Collection; <br />(c) Distinct ionospheric characteristics (SAO records) for 10 European Digisonde stations (AT138, EA036, EB040, DB049, JR055, PQ052, RL052, RO041, SO148, TR170).",
+    title="Total IONOspheric response Solar Wind Magnetosphere driven (TIONO_SWM)",
+    description="The TIONO_SWM workflow provides: <br /><br />(a) Geomagnetic three-hourly (T00:00:00, T03:00:00, …, T21:00:00) Kp index​; <br />(b) DSCOVR mission Magdata records (Bmag, Bx, By, Bz) as part of the SWIF model Data Collection; <br />(c) Distinct ionospheric characteristics (SAO records) for 10 European Digisonde stations (AT138, EA036, EB040, DB049, JR055, PQ052, RL052, RO041, SO148, TR170); <br />(d) GNSS Vertical Total Electron Content (VTEC) values over 10 European Digisonde stations (AT138, EA036, EB040, DB049, JR055, PQ052, RL052, RO041, SO148, TR170).",
     version="1.1.0",
-    root_path="/wf-swimagd_iono"
+    root_path="/wf-swimagd_iono_vtec_api"
 )
 
 # Configure CORS for all domains
@@ -280,6 +281,7 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     characteristics = characteristics.replace(' ', '')
     # Sort the stations and characteristics a-z
     stations = ','.join(sorted(stations.split(',')))
+    original_characteristics = ','.join(sorted(characteristics.split(',')))
     characteristics = ','.join(sorted(characteristics.split(',')))
     
     # Validate the inputs
@@ -290,10 +292,43 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
     if not set(stations.split(',')).issubset(VALID_STATIONS):
         error_message['error']=f"One or more stations are invalid. Here is the list of valid stations: {','.join(VALID_STATIONS)}"
         return JSONResponse(status_code=200, content=error_message)
-    if not set(characteristics.split(',')).issubset(VALID_CHARACTERISTICS):
-        error_message['error']=f"One or more characteristics are invalid. Here is the list of valid characteristics: {','.join(VALID_CHARACTERISTICS)}"
+    # Validate the inputs
+    if not set(characteristics.split(',')).issubset(set(SORTED_BOTH_CHARACTERISTICS.split(','))):
+        print(f"characteristics: {characteristics}, SORTED_BOTH_CHARACTERISTICS: {SORTED_BOTH_CHARACTERISTICS}")
+        error_message[
+            'error'] = f"One or more characteristics are invalid:{set(characteristics.split(','))}. Here is the list of valid characteristics: {SORTED_BOTH_CHARACTERISTICS}"
         return JSONResponse(status_code=200, content=error_message)
-    
+    has_vtec = False
+    vtec_data = None
+    if 'VTEC' in characteristics:
+        has_vtec = True
+        # Convert the start and end datetimes to datetime "YYYY-MM-DDTHH:MM:SS"
+        start_datetime_obj = datetime.strptime(start_datetime, '%Y-%m-%dT%H:%M:%S')
+        end_datetime_obj = datetime.strptime(end_datetime, '%Y-%m-%dT%H:%M:%S')
+        # Add one day to the end date to ensure the end date is included in the results
+        end_datetime_obj += timedelta(days=1)
+        # For each station, get the VTEC data
+        # Convert the station to lower case and get the first 4 characters
+        vtec_data = {}
+        vtec_files = {}
+        for station in stations.split(','):
+            data = get_vtec(start_datetime, end_datetime, station.lower()[:4])
+            data = json.loads(data["data"])
+            # Convert nested dict to DataFrame
+            vtec_df = pd.DataFrame.from_dict(data, orient='index')
+            # Convert 'datetime' from Unix ms to pandas datetime
+            vtec_df['datetime'] = pd.to_datetime(vtec_df['datetime'], unit='ms')
+            # If you want to filter out zero values
+            vtec_df = vtec_df[vtec_df['VTEC'] > 0]
+            # Convert the vtec to json object and save it to the vtec_data dict
+            vtec_data[station] = json.loads(vtec_df.to_json(orient='index'))
+            # Create CSV files in memory for each station
+            vtec_filename = f"vtec_{station}_{start_datetime.replace(':','-')}_{end_datetime.replace(':','-')}.csv"
+            vtec_file = StringIO()
+            vtec_file.write(vtec_df.to_csv(index=False))
+            vtec_file.seek(0)
+            vtec_files[vtec_filename] = vtec_file
+
     # Workflow Step 1: Get KP data
     kp_script_path = f'{workflow_dir}/get_kp_data.sh'
     # Convert the start and end datetimes to dates
@@ -358,46 +393,52 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
         error_message['error'] = f"Error processing output: {str(e)}"
         return JSONResponse(status_code=200, content=error_message)
         #raise HTTPException(status_code=400, detail=f"Error processing output: {str(e)}")
-    
-    # Workflow Step 3: Get SAO metadata
-    sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
-    command = ['python3', sao_script_path, start_datetime, end_datetime, stations, characteristics]
-    # Execute the script and capture the output
-    try:
-        process = subprocess.run(command, check=True, capture_output=True, text=True)
-        stdout, stderr = process.stdout, process.stderr
-        
-        if process.returncode != 0:
-            error_message['error'] = stderr.decode()
+
+    if has_vtec:
+        characteristics = set(characteristics.split(',')) - set(['VTEC'])
+        characteristics = ','.join(sorted(characteristics))
+    station_files = None
+    if len(characteristics) > 0:
+        # Workflow Step 3: Get SAO metadata
+        sao_script_path = f'{workflow_dir}/get_sao_metadata.py'
+        command = ['python3', sao_script_path, start_datetime, end_datetime, stations, characteristics]
+        # Execute the script and capture the output
+        try:
+            process = subprocess.run(command, check=True, capture_output=True, text=True)
+            stdout, stderr = process.stdout, process.stderr
+
+            if process.returncode != 0:
+                error_message['error'] = stderr.decode()
+                return JSONResponse(status_code=200, content=error_message)
+
+        except subprocess.CalledProcessError as e:
+            error_message['error'] = json.loads(e.stdout)
             return JSONResponse(status_code=200, content=error_message)
-        
-    except subprocess.CalledProcessError as e:
-        error_message['error'] = json.loads(e.stdout)
-        return JSONResponse(status_code=200, content=error_message)
-    # Create CSV files in memory for each station
-    try:
         # Create CSV files in memory for each station
-        station_files = {}
-        for line in process.stdout.splitlines():
-            if line.startswith("station_csv_filename:"):
-                filename = line.split("'")[1].split(",")[0].replace(':','-').strip()
-                station_files[filename] = StringIO()
-            elif line:
-                station_files[filename].write(line + '\n')
-    except Exception as e:
-        error_message['error'] = f"Error processing output: {str(e)}"
-        return JSONResponse(status_code=200, content=error_message)
+        try:
+            # Create CSV files in memory for each station
+            station_files = {}
+            for line in process.stdout.splitlines():
+                if line.startswith("station_csv_filename:"):
+                    filename = line.split("'")[1].split(",")[0].replace(':','-').strip()
+                    station_files[filename] = StringIO()
+                elif line:
+                    station_files[filename].write(line + '\n')
+        except Exception as e:
+            error_message['error'] = f"Error processing output: {str(e)}"
+            return JSONResponse(status_code=200, content=error_message)
     
     if format == OutputFormat.json:
         # Convert to json from csv, first row is header, keys are separated by comma, data is from second row, values are separated by comma
         kp_json = pd.read_csv(kp_file, sep=',', header=0, index_col=0).to_json(orient='index')
         bmag_json = pd.read_csv(bmag_file, sep=',', header=0, index_col=0).to_json(orient='index')
         sao_json = {}
-        for filename, file in station_files.items():
-            file.seek(0)
-            # Only get the station name from the filename
-            filename = filename.split('_')[0]
-            sao_json[filename] = json.loads(pd.read_csv(file, sep=',', header=0, index_col=0, usecols=lambda column: column != 'station').to_json(orient='index'))
+        if station_files is not None:
+            for filename, file in station_files.items():
+                file.seek(0)
+                # Only get the station name from the filename
+                filename = filename.split('_')[0]
+                sao_json[filename] = json.loads(pd.read_csv(file, sep=',', header=0, index_col=0, usecols=lambda column: column != 'station').to_json(orient='index'))
         # Construct the final json response
         response_json = {
             'start_datetime': start_datetime,
@@ -407,7 +448,8 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
             'data':{
                 'kp_data': json.loads(kp_json),
                 'b_data': json.loads(bmag_json),
-                'sao_metadata': sao_json
+                'sao_metadata': sao_json,
+                'vtec_data': vtec_data if has_vtec else None
             }
         }
         # Return the json response
@@ -428,10 +470,16 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
                 zipf.writestr(kp_filename, kp_file.getvalue())
                 # Add the BMAG data file
                 zipf.writestr(bmag_filename, bmag_file.getvalue())
-                # Add the SAO metadata files
-                for filename, file in station_files.items():
-                    file.seek(0)
-                    zipf.writestr(f"sao/{filename}", file.getvalue())
+                if station_files is not None:
+                    # Add the SAO metadata files
+                    for filename, file in station_files.items():
+                        file.seek(0)
+                        zipf.writestr(f"sao/{filename}", file.getvalue())
+                if has_vtec:
+                    # Add the VTEC data files
+                    for filename, file in vtec_files.items():
+                        file.seek(0)
+                        zipf.writestr(f"vtec/{filename}", file.getvalue())
         except Exception as e:
             error_message['error'] = f"Error processing output: {str(e)}"
             return JSONResponse(status_code=200, content=error_message)
@@ -748,7 +796,7 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         # Make all the lines in the plot to be under the grid lines, not cover the data
         ax_vtec.set_axisbelow(True)
         # Set the y-axis label
-        ax_vtec.set_ylabel('VTEC / TECUs')
+        ax_vtec.set_ylabel('GNSS VTEC [TECUs]')
         # Plot the VTEC data using dots, skip the timestamp with 0 value
         ax_vtec.plot(vtec_data['datetime'], vtec_data['VTEC'], linestyle="", label='VTEC', linewidth=1, color='#156082', marker='o', markersize=1, alpha=0.7)
         # Set the y-axis range from min to max of vtec_data['VTEC'] offset by 0.5
@@ -761,19 +809,21 @@ async def plot_data(date_of_interest: str = Query(..., description="Date in the 
         # Set the legend
         ax_vtec.legend()
         # Set the title
-        ax_vtec.set_title(f'{selected_station} - Vertical Total Electron Content (VTEC)')
+        ax_vtec.set_title(f'GNSS Vertical Total Electron Content (VTEC) over {selected_station}')
         ax_vtec.set_xticklabels([datetime.strftime(x, '%H:%M:%S\n%b %d, %Y') for x in major_ticks])
 
     plt.tight_layout()
     # Save the plot to a temporary file, png format, filename is station_date_of_interest_characteristics_seperated_by_-.png
     plot_filename = f"{selected_station}_{date_of_interest}_{original_characteristics.replace(',','-')}.png"
-    plt.savefig(f'/tmp/{plot_filename}')
+    img_io = io.BytesIO()
+    fig.savefig(img_io, format='png', bbox_inches='tight')
+    img_io.seek(0)
     plt.close()
     # Return the output as a FileResponse
     headers = {
         'Content-Disposition': f'attachment; filename="{plot_filename}"'
     }
-    return FileResponse(f"/tmp/{plot_filename}", media_type="image/png", headers=headers)
+    return StreamingResponse(img_io, media_type="image/png")
     
 def get_vtec(
         start_date: str,
@@ -783,7 +833,7 @@ def get_vtec(
     try:
         # Run the shell script
         result = subprocess.run(
-            ["bash", "./run_script.sh", start_date, end_date, station_id],  # make sure script is executable and has correct path
+            ["bash", "./get_vtec_data.sh", start_date, end_date, station_id],  # make sure script is executable and has correct path
             capture_output=True,
             text=True,
             check=False  # let us handle errors ourselves

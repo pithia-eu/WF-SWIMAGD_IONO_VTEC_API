@@ -4,7 +4,7 @@
 VENV_NAME=venv
 
 # Navigate to project directory
-cd /home/ubuntu/WF-SWIMAGD_IONO
+cd /home/ubuntu/WF-SWIMAGD_IONO_VTEC_API
 
 # Activate the venv
 source $VENV_NAME/bin/activate
@@ -19,4 +19,4 @@ else
 fi
 
 # Run the uvicorn server
-uvicorn main:app --reload --port 8082 --host 0.0.0.0
+uvicorn main:app --reload --port 8087 --host 0.0.0.0

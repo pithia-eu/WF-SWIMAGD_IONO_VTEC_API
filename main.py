@@ -64,7 +64,7 @@ VALID_CHARACTERISTICS = {
 SORTED_VALID_CHARACTERISTICS = ','.join(sorted(VALID_CHARACTERISTICS))
 
 FREQ_CHARACTERISTICS = {
-    'fbEs', 'foE', 'foEs', 'foF2', 'mufD'
+    'fbEs', 'foE', 'foEs', 'foF2', 'mufD','ff'
 }
 
 HEIGHT_CHARACTERISTICS = {

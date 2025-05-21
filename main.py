@@ -319,13 +319,13 @@ async def run_workflow(start_datetime: str = Query(..., description="Datetime in
             # Remove the "julian_day" column
             vtec_df = vtec_df.drop(columns=['julian_day'])
             # Convert 'datetime' from Unix ms to pandas datetime
-            vtec_df['datetime'] = pd.to_datetime(vtec_df['datetime'], unit='ms')
-            # Convert the datetime to the format YYYY-MM-DDTHH:MM:SS
-            vtec_df['timestamp'] = vtec_df['datetime'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+            vtec_df['timestamp'] = pd.to_datetime(vtec_df['datetime'], unit='ms').dt.strftime('%Y-%m-%dT%H:%M:%S')
+            # Drop the 'datetime' column
+            vtec_df = vtec_df.drop(columns=['datetime'])
             # If you want to filter out zero values
             vtec_df = vtec_df[vtec_df['VTEC'] > 0]
             # Reorder the columns, timestamp, datetime and VTEC
-            vtec_df = vtec_df[['timestamp', 'datetime', 'VTEC']]
+            vtec_df = vtec_df[['timestamp', 'VTEC']]
             # Convert the vtec to json object and save it to the vtec_data dict
             vtec_data[station] = json.loads(vtec_df.to_json(orient='index'))
             # Create CSV files in memory for each station
